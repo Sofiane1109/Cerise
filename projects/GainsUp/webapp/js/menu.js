@@ -61,7 +61,7 @@ function checkActiveSession() {
 
 // Démarrer une nouvelle séance
 function handleStartSession() {
-    console.log('🏋️ Démarrage d'une nouvelle séance');
+    console.log("🏋️ Démarrage d'une nouvelle séance");
     
     const selectedUserId = localStorage.getItem('selectedUserId');
     const today = new Date().toISOString().split('T')[0];
