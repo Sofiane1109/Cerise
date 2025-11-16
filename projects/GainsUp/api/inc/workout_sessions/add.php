@@ -15,10 +15,15 @@ if(!$stmt = $conn->prepare("
 }
 
 
+// Préparer les variables AVANT bind_param
+$user_id = htmlentities($postvars['user_id']);
+$date = $postvars['date'];
+$notes = $postvars['notes'] ? htmlentities($postvars['notes']) : null;
+
 if(!$stmt->bind_param("iss",
-    htmlentities($postvars['user_id']),
-    $postvars['date'],
-    htmlentities($postvars['notes'])
+    $user_id,
+    $date,
+    $notes
 )){
     die('{"error":"Prepared Statement bind failed on bind",
          "errNo":' . json_encode($conn->errno) . ',

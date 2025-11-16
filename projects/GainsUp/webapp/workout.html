@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GainsUp - Nouvelle Séance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container-fluid">
+            <button class="btn-back" id="btnBack">← Retour</button>
+            <span class="navbar-brand">GainsUP ↗️</span>
+            <div style="width: 80px;"></div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- En-tête de la séance -->
+        <div class="workout-header">
+            <h1 class="workout-header-title" id="exerciseName">Développé couché haltères</h1>
+            <p class="workout-header-date" id="currentDate">Aujourd'hui</p>
+        </div>
+
+        <!-- Alert pour messages -->
+        <div id="alert"></div>
+
+        <!-- Rappel dernière séance -->
+        <div class="last-workout-section" id="lastWorkoutSection">
+            <h3 class="section-title">📊 Dernière séance</h3>
+            <div class="last-workout-card" id="lastWorkoutCard">
+                <p style="text-align: center; color: var(--text-gray);">⏳ Chargement...</p>
+            </div>
+        </div>
+
+        <!-- Séries en cours -->
+        <div class="current-sets-section">
+            <h3 class="section-title">🏋️ Séries en cours</h3>
+            <div class="current-sets-list" id="currentSetsList">
+                <div class="no-sets-yet">
+                    <p>Aucune série ajoutée pour le moment</p>
+                    <p style="font-size: 0.9rem; color: var(--text-gray);">Utilisez le formulaire ci-dessous pour ajouter votre première série</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulaire d'ajout de série -->
+        <div class="add-set-form">
+            <h3 class="section-title">➕ Ajouter une série</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="reps">Répétitions</label>
+                    <input type="number" id="reps" class="form-input" placeholder="12" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="weight">Poids (kg)</label>
+                    <input type="number" id="weight" class="form-input" placeholder="20" min="0" step="0.5">
+                </div>
+            </div>
+            <button class="btn-add-set" id="btnAddSet">
+                ✅ Ajouter série
+            </button>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="workout-actions">
+            <button class="btn-cancel-workout" id="btnCancel">
+                ❌ Annuler
+            </button>
+            <button class="btn-finish-workout" id="btnFinish">
+                🎯 Terminer la séance
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/workout.js"></script>
+</body>
+</html>

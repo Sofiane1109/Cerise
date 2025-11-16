@@ -82,14 +82,6 @@ function createUserCard(user) {
             <div class="user-icon">${user.username.charAt(0).toUpperCase()}</div>
             <p class="user-name">${user.username}</p>
         </div>
-        <div class="user-card-actions">
-            <button class="btn-edit-user" data-user-id="${user.user_id}" data-username="${user.username}" title="Modifier">
-                ✏️
-            </button>
-            <button class="btn-delete-user" data-user-id="${user.user_id}" data-username="${user.username}" title="Supprimer">
-                🗑️
-            </button>
-        </div>
     `;
     
     return card;
@@ -97,22 +89,7 @@ function createUserCard(user) {
 
 // Gérer la sélection d'un utilisateur
 function handleUserSelection(event) {
-    // Vérifier si c'est un bouton d'action
-    const editBtn = event.target.closest('.btn-edit-user');
-    const deleteBtn = event.target.closest('.btn-delete-user');
-    
-    if (editBtn) {
-        event.stopPropagation();
-        handleEditUser(editBtn.dataset.userId, editBtn.dataset.username);
-        return;
-    }
-    
-    if (deleteBtn) {
-        event.stopPropagation();
-        handleDeleteUser(deleteBtn.dataset.userId, deleteBtn.dataset.username);
-        return;
-    }
-    
+        
     // Sinon, c'est un clic sur la card
     const card = event.target.closest('.user-card');
     

@@ -51,6 +51,29 @@ body {
     color: var(--purple-flash) !important;
     font-weight: bold;
     font-size: 1.5rem;
+    text-shadow: 
+        0 0 10px rgba(168, 85, 247, 0.8),
+        0 0 20px rgba(168, 85, 247, 0.6),
+        0 0 30px rgba(168, 85, 247, 0.4),
+        0 0 40px rgba(168, 85, 247, 0.2);
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        text-shadow: 
+            0 0 10px rgba(168, 85, 247, 0.8),
+            0 0 20px rgba(168, 85, 247, 0.6),
+            0 0 30px rgba(168, 85, 247, 0.4),
+            0 0 40px rgba(168, 85, 247, 0.2);
+    }
+    50% {
+        text-shadow: 
+            0 0 15px rgba(168, 85, 247, 1),
+            0 0 30px rgba(168, 85, 247, 0.8),
+            0 0 45px rgba(168, 85, 247, 0.6),
+            0 0 60px rgba(168, 85, 247, 0.4);
+    }
 }
 
 /* ============================================
@@ -748,4 +771,330 @@ textarea {
 .no-history-text {
     font-size: 1rem;
     margin-bottom: 1rem;
+}
+
+/* ============================================
+   WORKOUT PAGE (Page 4)
+   ============================================ */
+.workout-header {
+    background: linear-gradient(135deg, var(--purple-flash), var(--purple-dark));
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.4),
+                0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.workout-header-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-white);
+    margin: 0 0 0.5rem 0;
+}
+
+.workout-header-date {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-white);
+    margin-bottom: 1rem;
+}
+
+/* ============================================
+   LAST WORKOUT SECTION
+   ============================================ */
+.last-workout-section {
+    margin-bottom: 2rem;
+}
+
+.last-workout-card {
+    background-color: var(--card-gray);
+    border: 2px solid var(--border-gray);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.last-workout-date {
+    color: var(--purple-flash);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.last-workout-sets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.last-workout-set {
+    background-color: var(--bg-dark-gray);
+    padding: 0.75rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.set-label {
+    color: var(--text-gray);
+    font-weight: 600;
+}
+
+.set-details {
+    color: var(--text-white);
+    font-weight: 600;
+}
+
+/* ============================================
+   CURRENT SETS SECTION
+   ============================================ */
+.current-sets-section {
+    margin-bottom: 2rem;
+}
+
+.current-sets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.no-sets-yet {
+    background-color: var(--card-gray);
+    border: 2px dashed var(--border-gray);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-gray);
+}
+
+.current-set-item {
+    background-color: var(--card-gray);
+    border: 2px solid var(--purple-flash);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3),
+                0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.current-set-info {
+    flex: 1;
+}
+
+.current-set-number {
+    color: var(--purple-flash);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.current-set-details {
+    color: var(--text-white);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.current-set-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-edit-set,
+.btn-delete-set {
+    background-color: transparent;
+    border: 2px solid var(--border-gray);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-edit-set:hover {
+    background-color: var(--purple-flash);
+    border-color: var(--purple-flash);
+}
+
+.btn-delete-set:hover {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-edit-set:active,
+.btn-delete-set:active {
+    transform: scale(0.9);
+}
+
+/* ============================================
+   ADD SET FORM
+   ============================================ */
+.add-set-form {
+    background-color: var(--card-gray);
+    border: 2px solid var(--border-gray);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    color: var(--text-gray);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-input {
+    background-color: var(--bg-dark-gray);
+    border: 2px solid var(--border-gray);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: var(--text-white);
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--purple-flash);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+
+.btn-add-set {
+    background-color: var(--purple-flash);
+    color: var(--text-white);
+    border: none;
+    border-radius: 12px;
+    padding: 1rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.5),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-add-set:hover {
+    background-color: var(--purple-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.7),
+                0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn-add-set:active {
+    transform: scale(0.98);
+}
+
+/* ============================================
+   WORKOUT ACTIONS
+   ============================================ */
+.workout-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.btn-cancel-workout,
+.btn-finish-workout {
+    padding: 1rem;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-height: 56px;
+}
+
+.btn-cancel-workout {
+    background-color: var(--card-gray);
+    color: var(--text-gray);
+    border: 2px solid var(--border-gray);
+}
+
+.btn-cancel-workout:hover {
+    background-color: #ef4444;
+    color: var(--text-white);
+    border-color: #ef4444;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.btn-finish-workout {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: var(--text-white);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-finish-workout:hover {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6),
+                0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-finish-workout:active,
+.btn-cancel-workout:active {
+    transform: scale(0.98);
+}
+
+/* ============================================
+   RESPONSIVE WORKOUT PAGE
+   ============================================ */
+@media (max-width: 375px) {
+    .workout-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .workout-header-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .workout-actions {
+        grid-template-columns: 1fr;
+    }
 }

@@ -303,23 +303,41 @@ function displayNoHistory(exerciseId) {
 
 // Gérer le clic sur "Ajouter séance"
 function handleAddWorkout(event) {
+    console.log('🖱️ Clic détecté:', event.target);
+    
     const btn = event.target.closest('.btn-add-workout');
     
-    if (!btn) return;
+    console.log('🔍 Bouton trouvé:', btn);
+    
+    if (!btn) {
+        console.log('❌ Pas de bouton .btn-add-workout trouvé');
+        return;
+    }
     
     const exerciseId = btn.dataset.exerciseId;
     const exerciseName = btn.dataset.exerciseName;
     
-    console.log('➕ Ajouter séance pour:', exerciseName);
+    console.log('➕ Ajouter séance pour:', exerciseName, 'ID:', exerciseId);
+    console.log('📋 Dataset complet:', btn.dataset);
     
     // Sauvegarder l'exercice sélectionné
     localStorage.setItem('selectedExerciseId', exerciseId);
     localStorage.setItem('selectedExerciseName', exerciseName);
     
-    // Rediriger vers la page d'ajout de séance
-    // window.location.href = 'workout.html';
+    console.log('💾 LocalStorage mis à jour');
+    console.log('📦 Vérification localStorage:', {
+        exerciseId: localStorage.getItem('selectedExerciseId'),
+        exerciseName: localStorage.getItem('selectedExerciseName')
+    });
+    console.log('🔄 Redirection vers workout.html...');
     
-    alerter(`✅ Exercice sélectionné: ${exerciseName}`, "success");
+    // Rediriger vers la page d'ajout de séance
+    try {
+        window.location.href = 'workout.html';
+        console.log('✅ Redirection lancée');
+    } catch(error) {
+        console.error('❌ Erreur redirection:', error);
+    }
 }
 
 // Gérer le retour
