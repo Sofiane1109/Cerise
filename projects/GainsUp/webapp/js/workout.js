@@ -34,6 +34,7 @@ function initWorkout() {
     selectedUserId = localStorage.getItem('selectedUserId');
     selectedExerciseId = localStorage.getItem('selectedExerciseId');
     selectedExerciseName = localStorage.getItem('selectedExerciseName');
+    const activeSessionId = localStorage.getItem('activeSessionId');
     
     if (!selectedUserId || !selectedExerciseId || !selectedExerciseName) {
         alerter("⚠️ Données manquantes", "warning");
@@ -43,22 +44,32 @@ function initWorkout() {
         return;
     }
     
+    if (!activeSessionId) {
+        alerter("⚠️ Aucune séance active. Retour au menu...", "warning");
+        setTimeout(() => {
+            window.location.href = 'menu.html';
+        }, 1500);
+        return;
+    }
+    
     console.log('✅ User:', selectedUserId);
     console.log('✅ Exercise:', selectedExerciseId, selectedExerciseName);
+    console.log('✅ Session active:', activeSessionId);
+    
+    // Utiliser la session existante
+    sessionId = activeSessionId;
     
     // Afficher les informations
     exerciseName.textContent = selectedExerciseName;
     currentDate.textContent = formatDate(new Date());
     
-    // Créer une session
-    createSession();
-    
-    // Charger la dernière séance
+    // Charger la dernière séance (NE PLUS créer de session !)
     loadLastWorkout();
 }
 
 // Créer une session d'entraînement
-function createSession() {
+// NOTE: Cette fonction n'est plus utilisée. La session est maintenant créée dans menu.html
+function createSession_OLD() {
     console.log('📝 Création de la session');
     
     const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
@@ -316,7 +327,8 @@ function saveSetToAPI(set) {
         // Ton API peut retourner "id" ou "set_id"
         const setId = responseData.set_id || responseData.id;
         
-        if (responseData.status === 200 && setId) {
+        // Accepter 200 ou 201
+        if ((responseData.status === 201 || responseData.status === 200) && setId) {
             console.log('✅ Set sauvegardé:', setId);
             
             // Ajouter le set_id réel

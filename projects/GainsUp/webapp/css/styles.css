@@ -88,6 +88,103 @@ body {
 }
 
 /* ============================================
+   SESSION CONTROL
+   ============================================ */
+.session-control {
+    margin-bottom: 2rem;
+}
+
+.btn-start-session {
+    width: 100%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: var(--text-white);
+    border: none;
+    border-radius: 12px;
+    padding: 1.25rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-start-session:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6),
+                0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn-start-session:active {
+    transform: scale(0.98);
+}
+
+.active-session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.active-session-badge {
+    background: linear-gradient(135deg, var(--purple-flash), var(--purple-dark));
+    color: var(--text-white);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.5),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pulse-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #10b981;
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+}
+
+.btn-end-session {
+    width: 100%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: var(--text-white);
+    border: none;
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4),
+                0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-end-session:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6),
+                0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn-end-session:active {
+    transform: scale(0.98);
+}
+
+/* ============================================
    ALERTS (optimisées mobile)
    ============================================ */
 #alert {
