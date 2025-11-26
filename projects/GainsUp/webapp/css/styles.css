@@ -1010,6 +1010,25 @@ textarea {
     font-size: 1.25rem;
     font-weight: 600;
     margin-top: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.set-note {
+    font-size: 0.9rem;
+    color: var(--text-gray);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.set-note-last {
+    font-size: 0.85rem;
+    color: var(--text-gray);
+    font-weight: 400;
+    font-style: italic;
+    display: block;
+    margin-top: 0.25rem;
 }
 
 .current-set-actions {
@@ -1107,6 +1126,7 @@ textarea {
     width: 100%;
     cursor: pointer;
     transition: all 0.2s ease;
+    margin-top: 1.5rem;
     box-shadow: 0 0 20px rgba(168, 85, 247, 0.5),
                 0 4px 12px rgba(0, 0, 0, 0.3);
 }

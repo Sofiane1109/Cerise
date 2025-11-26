@@ -3,11 +3,10 @@
 // ============================================
 const baseApiAddress = 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/';
 const btnBack = document.getElementById('btnBack');
-const btnCancel = document.getElementById('btnCancel');
-const btnFinish = document.getElementById('btnFinish');
 const btnAddSet = document.getElementById('btnAddSet');
 const repsInput = document.getElementById('reps');
 const weightInput = document.getElementById('weight');
+const noteInput = document.getElementById('note');
 const exerciseName = document.getElementById('exerciseName');
 const currentDate = document.getElementById('currentDate');
 const lastWorkoutSection = document.getElementById('lastWorkoutSection');
@@ -17,7 +16,7 @@ const alertContainer = document.getElementById('alert');
 
 // Variables de session
 let sessionId = null;
-let currentSets = []; // Stocke les sets en mémoire (avant sauvegarde finale)
+let currentSets = [];
 let selectedUserId = null;
 let selectedExerciseId = null;
 let selectedExerciseName = null;
@@ -30,7 +29,6 @@ let selectedExerciseName = null;
 function initWorkout() {
     console.log('🏋️ Initialisation de la page workout');
     
-    // Récupérer les données du localStorage
     selectedUserId = localStorage.getItem('selectedUserId');
     selectedExerciseId = localStorage.getItem('selectedExerciseId');
     selectedExerciseName = localStorage.getItem('selectedExerciseName');
@@ -56,96 +54,19 @@ function initWorkout() {
     console.log('✅ Exercise:', selectedExerciseId, selectedExerciseName);
     console.log('✅ Session active:', activeSessionId);
     
-    // Utiliser la session existante
     sessionId = activeSessionId;
     
-    // Afficher les informations
     exerciseName.textContent = selectedExerciseName;
     currentDate.textContent = formatDate(new Date());
     
-    // Charger la dernière séance (NE PLUS créer de session !)
     loadLastWorkout();
-}
-
-// Créer une session d'entraînement
-// NOTE: Cette fonction n'est plus utilisée. La session est maintenant créée dans menu.html
-function createSession_OLD() {
-    console.log('📝 Création de la session');
-    
-    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-    
-    let url = baseApiAddress + "workout_sessions.php";
-    
-    fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            user_id: selectedUserId,
-            date: today,
-            notes: null
-        })
-    })
-    .then(response => {
-        console.log('📡 Response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.text();
-    })
-    .then(responseText => {
-        console.log('📄 Response brute:', responseText);
-        
-        // Extraire le dernier JSON valide (après les erreurs PHP)
-        try {
-            // Chercher le dernier { et } pour isoler le JSON final
-            const lastBrace = responseText.lastIndexOf('}');
-            if (lastBrace === -1) {
-                throw new Error('Aucun JSON trouvé');
-            }
-            
-            // Chercher le { qui correspond à ce }
-            let openBraces = 1;
-            let firstBrace = lastBrace - 1;
-            while (firstBrace >= 0 && openBraces > 0) {
-                if (responseText[firstBrace] === '}') openBraces++;
-                if (responseText[firstBrace] === '{') openBraces--;
-                firstBrace--;
-            }
-            firstBrace++; // Corriger la position
-            
-            const jsonString = responseText.substring(firstBrace, lastBrace + 1);
-            console.log('📄 JSON extrait:', jsonString);
-            
-            const responseData = JSON.parse(jsonString);
-            console.log('📦 Response data:', responseData);
-            
-            // Ton API retourne "id" et non "session_id"
-            if (responseData.status === 200 && responseData.id) {
-                sessionId = responseData.id;
-                console.log('✅ Session créée:', sessionId);
-            } else {
-                console.error('❌ Erreur création session:', responseData);
-                alerter("❌ Erreur lors de la création de la session", "danger");
-            }
-        } catch (parseError) {
-            console.error('❌ Erreur parsing JSON:', parseError);
-            console.error('📄 Texte reçu:', responseText);
-            alerter("❌ Erreur de format de réponse", "danger");
-        }
-    })
-    .catch(error => {
-        console.error('❌ Erreur:', error);
-        alerter("⚠️ Erreur réseau: " + error.message, "danger");
-    });
 }
 
 // Charger la dernière séance
 function loadLastWorkout() {
-    console.log('📊 Chargement dernière séance');
+    console.log('📊 Chargement dernière séance pour exercice:', selectedExerciseId);
     
-    let url = baseApiAddress + "workout_sessions.php";
+    let url = baseApiAddress + "sets.php";
     
     fetch(url, {
         method: "GET",
@@ -161,27 +82,22 @@ function loadLastWorkout() {
         return response.json();
     })
     .then(responseData => {
-        console.log('📦 Sessions récupérées:', responseData);
+        console.log('📦 Sets récupérés:', responseData);
         if (responseData.status === 200 && responseData.data) {
-            // Filtrer les sessions de cet utilisateur
-            const userSessions = responseData.data.filter(s => s.user_id == selectedUserId);
+            // Filtrer les sets de CET exercice pour CET utilisateur
+            const exerciseSets = responseData.data.filter(s => 
+                s.exercise_id == selectedExerciseId
+            );
             
-            if (userSessions.length > 0) {
-                // Trier par date décroissante
-                userSessions.sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                // Prendre la plus récente (qui n'est pas celle d'aujourd'hui)
-                const today = new Date().toISOString().split('T')[0];
-                const lastSession = userSessions.find(s => s.date !== today);
-                
-                if (lastSession) {
-                    loadLastWorkoutSets(lastSession);
-                } else {
-                    displayNoLastWorkout();
-                }
-            } else {
+            console.log('📊 Sets de cet exercice:', exerciseSets);
+            
+            if (exerciseSets.length === 0) {
                 displayNoLastWorkout();
+                return;
             }
+            
+            // Charger les sessions pour trouver celles de cet utilisateur
+            loadSessionsForSets(exerciseSets);
         } else {
             displayNoLastWorkout();
         }
@@ -192,9 +108,9 @@ function loadLastWorkout() {
     });
 }
 
-// Charger les sets de la dernière séance
-function loadLastWorkoutSets(session) {
-    let url = baseApiAddress + "sets.php";
+// Charger les sessions pour filtrer par utilisateur
+function loadSessionsForSets(exerciseSets) {
+    let url = baseApiAddress + "workout_sessions.php";
     
     fetch(url, {
         method: "GET",
@@ -202,22 +118,48 @@ function loadLastWorkoutSets(session) {
             "Content-Type": "application/json"
         }
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(responseData => {
         if (responseData.status === 200 && responseData.data) {
-            // Filtrer les sets de cette session et cet exercice
-            const sets = responseData.data.filter(s => 
-                s.session_id == session.session_id && 
-                s.exercise_id == selectedExerciseId
+            // Filtrer les sessions de cet utilisateur
+            const userSessions = responseData.data.filter(s => s.user_id == selectedUserId);
+            
+            // Créer un map des session_id de cet utilisateur
+            const userSessionIds = new Set(userSessions.map(s => s.session_id));
+            
+            // Filtrer les sets qui appartiennent aux sessions de cet utilisateur
+            const userExerciseSets = exerciseSets.filter(s => 
+                userSessionIds.has(parseInt(s.session_id))
             );
             
-            if (sets.length > 0) {
-                displayLastWorkout(session, sets);
+            if (userExerciseSets.length === 0) {
+                displayNoLastWorkout();
+                return;
+            }
+            
+            // Grouper par session
+            const sessionMap = new Map();
+            userExerciseSets.forEach(set => {
+                if (!sessionMap.has(set.session_id)) {
+                    sessionMap.set(set.session_id, []);
+                }
+                sessionMap.get(set.session_id).push(set);
+            });
+            
+            // Trouver la session la plus récente (qui n'est pas celle d'aujourd'hui)
+            const today = new Date().toISOString().split('T')[0];
+            const sessionsWithSets = Array.from(sessionMap.entries()).map(([session_id, sets]) => {
+                const session = userSessions.find(s => s.session_id == session_id);
+                return { session, sets };
+            })
+            .filter(item => item.session && item.session.date !== today) // Exclure aujourd'hui
+            .sort((a, b) => new Date(b.session.date) - new Date(a.session.date));
+            
+            console.log('📊 Sessions triées:', sessionsWithSets);
+            
+            if (sessionsWithSets.length > 0) {
+                const lastWorkout = sessionsWithSets[0];
+                displayLastWorkout(lastWorkout.session, lastWorkout.sets);
             } else {
                 displayNoLastWorkout();
             }
@@ -238,7 +180,6 @@ function displayLastWorkout(session, sets) {
         month: 'long'
     });
     
-    // Trier les sets par numéro
     sets.sort((a, b) => a.set_number - b.set_number);
     
     let html = `
@@ -251,6 +192,7 @@ function displayLastWorkout(session, sets) {
             <div class="last-workout-set">
                 <span class="set-label">Série ${set.set_number}</span>
                 <span class="set-details">${set.reps} × ${set.weight}kg</span>
+                ${set.note ? `<span class="set-note-last">📝 ${set.note}</span>` : ''}
             </div>
         `;
     });
@@ -269,6 +211,7 @@ function displayNoLastWorkout() {
 function handleAddSet() {
     const reps = parseInt(repsInput.value);
     const weight = parseFloat(weightInput.value);
+    const note = noteInput.value.trim() || null;
     
     // Validation
     if (!reps || reps < 1) {
@@ -288,19 +231,18 @@ function handleAddSet() {
         return;
     }
     
-    // Créer le set
     const setNumber = currentSets.length + 1;
     
     const newSet = {
         set_number: setNumber,
         reps: reps,
         weight: weight,
-        tempId: Date.now() // ID temporaire pour le tracking
+        note: note,
+        tempId: Date.now()
     };
     
     console.log('➕ Ajout série:', newSet);
     
-    // Ajouter à l'API
     saveSetToAPI(newSet);
 }
 
@@ -318,34 +260,28 @@ function saveSetToAPI(set) {
             exercise_id: selectedExerciseId,
             set_number: set.set_number,
             reps: set.reps,
-            weight: set.weight
+            weight: set.weight,
+            note: set.note
         })
     })
     .then(response => response.json())
     .then(responseData => {
         console.log('📦 Response ajout set:', responseData);
-        // Ton API peut retourner "id" ou "set_id"
         const setId = responseData.set_id || responseData.id;
         
-        // Accepter 200 ou 201
         if ((responseData.status === 201 || responseData.status === 200) && setId) {
             console.log('✅ Set sauvegardé:', setId);
             
-            // Ajouter le set_id réel
             set.set_id = setId;
-            
-            // Ajouter à la liste locale
             currentSets.push(set);
             
-            // Afficher
             displayCurrentSets();
             
-            // Réinitialiser le formulaire
             repsInput.value = '';
             weightInput.value = '';
+            noteInput.value = '';
             repsInput.focus();
             
-            // Message de succès
             alerter(`✅ Série ${set.set_number} ajoutée : ${set.reps}×${set.weight}kg`, "success");
         } else {
             alerter("❌ Erreur lors de l'ajout de la série", "danger");
@@ -379,7 +315,10 @@ function displayCurrentSets() {
         setItem.innerHTML = `
             <div class="current-set-info">
                 <div class="current-set-number">Série ${set.set_number}</div>
-                <div class="current-set-details">${set.reps} × ${set.weight}kg</div>
+                <div class="current-set-details">
+                    ${set.reps} × ${set.weight}kg
+                    ${set.note ? `<span class="set-note">📝 ${set.note}</span>` : ''}
+                </div>
             </div>
             <div class="current-set-actions">
                 <button class="btn-delete-set" data-set-id="${set.set_id}" title="Supprimer">
@@ -420,15 +359,12 @@ function handleDeleteSet(event) {
     .then(response => response.json())
     .then(responseData => {
         if (responseData.status === 200) {
-            // Retirer de la liste locale
             currentSets = currentSets.filter(s => s.set_id != setId);
             
-            // Renuméroter les sets
             currentSets.forEach((set, index) => {
                 set.set_number = index + 1;
             });
             
-            // Réafficher
             displayCurrentSets();
             
             alerter("✅ Série supprimée", "success");
@@ -442,62 +378,9 @@ function handleDeleteSet(event) {
     });
 }
 
-// Terminer la séance
-function handleFinish() {
-    if (currentSets.length === 0) {
-        alerter("⚠️ Ajoutez au moins une série avant de terminer", "warning");
-        return;
-    }
-    
-    if (!confirm(`Terminer la séance avec ${currentSets.length} série(s) ?`)) {
-        return;
-    }
-    
-    console.log('🎯 Fin de séance');
-    
-    alerter("✅ Séance terminée avec succès !", "success");
-    
-    setTimeout(() => {
-        window.location.href = 'groupe.html';
-    }, 1500);
-}
-
-// Annuler la séance
-function handleCancel() {
-    if (!confirm('Annuler la séance ? Toutes les séries seront supprimées.')) {
-        return;
-    }
-    
-    console.log('❌ Annulation séance');
-    
-    // Supprimer la session (cascade supprime aussi les sets)
-    if (sessionId) {
-        let url = baseApiAddress + "workout_sessions.php";
-        
-        fetch(url, {
-            method: "DELETE",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                session_id: sessionId
-            })
-        })
-        .then(() => {
-            window.location.href = 'groupe.html';
-        })
-        .catch(error => {
-            console.error('❌ Erreur:', error);
-            window.location.href = 'groupe.html';
-        });
-    } else {
-        window.location.href = 'groupe.html';
-    }
-}
-
-// Retour
+// Retour à la page groupe
 function handleBack() {
-    handleCancel();
+    window.location.href = 'groupe.html';
 }
 
 // Formater une date
@@ -541,17 +424,12 @@ function alerter(message, type = "info") {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialiser la page
     initWorkout();
     
-    // Attacher les événements
     btnAddSet.addEventListener('click', handleAddSet);
-    btnFinish.addEventListener('click', handleFinish);
-    btnCancel.addEventListener('click', handleCancel);
     btnBack.addEventListener('click', handleBack);
     currentSetsList.addEventListener('click', handleDeleteSet);
     
-    // Enter pour ajouter une série
     weightInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleAddSet();
