@@ -313,16 +313,16 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddUser.addEventListener('click', handleAddUser);
     btnSubmitUser.addEventListener('click', handleSubmitUser);
 
-    // Empêche affichage multiple : on lit une valeur dans localStorage
-    const alreadyShown = localStorage.getItem("newsPopupShown");
+    // // Empêche affichage multiple : on lit une valeur dans localStorage
+    // const alreadyShown = localStorage.getItem("newsPopupShown");
 
-    if (!alreadyShown) {
-        const modal = new bootstrap.Modal(document.getElementById("newsModal"));
-        modal.show();
+    // if (!alreadyShown) {
+    //     const modal = new bootstrap.Modal(document.getElementById("newsModal"));
+    //     modal.show();
 
-        // On l’enregistre pour ne l'afficher qu'une fois
-        localStorage.setItem("newsPopupShown", "true");
-    }
+    //     // On l’enregistre pour ne l'afficher qu'une fois
+    //     localStorage.setItem("newsPopupShown", "true");
+    // }
 });
 
 
