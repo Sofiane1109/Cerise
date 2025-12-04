@@ -1,6 +1,6 @@
 <?php
 // --- "Get" alle concerten  
-$sql = "select set_id, session_id, exercise_id, set_number, reps, weight FROM sets";
+$sql = "select set_id, session_id, exercise_id, set_number, reps, weight, notes FROM sets";
 
 // geen prepared statement nodig, aangezien we geen parameters van de gebruiker verwerken.
 

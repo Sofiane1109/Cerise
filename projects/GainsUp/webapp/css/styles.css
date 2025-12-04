@@ -1215,3 +1215,195 @@ textarea {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   CLASSEMENT
+   ============================================ */
+
+.classement-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.filter-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.classement-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.classement-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.classement-exercise-icon {
+    font-size: 2rem;
+}
+
+.classement-exercise-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.classement-rankings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+    transform: translateX(4px);
+    background: var(--border-color);
+}
+
+.ranking-podium {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+    border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.ranking-position {
+    font-size: 1.5rem;
+    font-weight: 700;
+    min-width: 50px;
+    text-align: center;
+}
+
+.ranking-user-info {
+    flex: 1;
+}
+
+.ranking-user-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+}
+
+.ranking-details {
+    font-size: 0.9rem;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+.ranking-date {
+    font-size: 0.75rem;
+    color: var(--text-gray);
+    margin-top: 0.25rem;
+}
+
+/* ============================================
+   CLASSEMENT - FILTRES AMÉLIORÉS
+   ============================================ */
+
+.classement-filters {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.filter-btn {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: capitalize;
+}
+
+.filter-btn:hover {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.7);
+}
+
+.filter-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.7);
+}
+
+/* ============================================
+   POPUP NEWS (style dark + glow)
+   ============================================ */
+
+.news-popup {
+    background-color: var(--card-gray);
+    border: 1px solid var(--border-gray);
+    color: var(--text-white);
+    box-shadow: 0 0 35px rgba(168, 85, 247, 0.25),
+                0 0 65px rgba(168, 85, 247, 0.15);
+    border-radius: 18px;
+}
+
+.news-popup .modal-header,
+.news-popup .modal-footer {
+    border-color: var(--border-gray);
+}
+
+.section-title {
+    font-weight: 600;
+    color: var(--purple-flash);
+    text-shadow: 0 0 10px rgba(168,85,247,0.4);
+}
+
+.news-list {
+    padding-left: 1.2rem;
+}
+
+.news-list li {
+    margin-bottom: 0.4rem;
+    color: var(--text-gray);
+    font-size: 0.95rem;
+}

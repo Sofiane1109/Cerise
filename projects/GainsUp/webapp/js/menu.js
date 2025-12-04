@@ -170,7 +170,7 @@ function handleStatsClick() {
 // Gérer le clic sur Classement
 function handleClassementClick() {
     console.log('Navigation vers Classement');
-    alerter("🏆 Classement - Page en cours de développement", "info");
+    window.location.href = 'classement.html';
 }
 
 // Gérer le changement d'utilisateur

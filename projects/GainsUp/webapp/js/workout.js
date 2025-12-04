@@ -192,7 +192,7 @@ function displayLastWorkout(session, sets) {
             <div class="last-workout-set">
                 <span class="set-label">Série ${set.set_number}</span>
                 <span class="set-details">${set.reps} × ${set.weight}kg</span>
-                ${set.note ? `<span class="set-note-last">📝 ${set.note}</span>` : ''}
+                ${set.notes ? `<span class="set-note-last">📝 ${set.notes}</span>` : ''}
             </div>
         `;
     });
@@ -211,7 +211,7 @@ function displayNoLastWorkout() {
 function handleAddSet() {
     const reps = parseInt(repsInput.value);
     const weight = parseFloat(weightInput.value);
-    const note = noteInput.value.trim() || null;
+    const notes = noteInput.value.trim() || null;
     
     // Validation
     if (!reps || reps < 1) {
@@ -237,7 +237,7 @@ function handleAddSet() {
         set_number: setNumber,
         reps: reps,
         weight: weight,
-        note: note,
+        notes: notes,
         tempId: Date.now()
     };
     
@@ -261,7 +261,7 @@ function saveSetToAPI(set) {
             set_number: set.set_number,
             reps: set.reps,
             weight: set.weight,
-            note: set.note
+            notes: set.notes
         })
     })
     .then(response => response.json())
@@ -317,7 +317,7 @@ function displayCurrentSets() {
                 <div class="current-set-number">Série ${set.set_number}</div>
                 <div class="current-set-details">
                     ${set.reps} × ${set.weight}kg
-                    ${set.note ? `<span class="set-note">📝 ${set.note}</span>` : ''}
+                    ${set.notes ? `<span class="set-note">📝 ${set.notes}</span>` : ''}
                 </div>
             </div>
             <div class="current-set-actions">
