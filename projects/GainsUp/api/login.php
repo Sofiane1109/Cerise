@@ -1,8 +1,13 @@
 <?php
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Max-Age: 1000');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 define('INDEX', true);
 
@@ -12,59 +17,65 @@ require 'inc/base.php';
 $input = json_decode(file_get_contents("php://input"), true);
 
 $username = trim($input['username'] ?? '');
-$password = $input['password'] ?? '';
+$password = trim($input['password'] ?? '');
 
 if ($username === '' || $password === '') {
-    $response = [
+    deliver_JSONresponse([
         "code" => 400,
         "status" => 400,
         "data" => "Username en password zijn verplicht"
-    ];
-    deliver_JSONresponse($response);
+    ]);
     exit;
 }
 
-$stmt = $conn->prepare(
-    "SELECT user_id, username, password_hash
-     FROM users
-     WHERE username = ?
-     LIMIT 1"
-);
+$stmt = $conn->prepare("
+    SELECT user_id, username, password_hash
+    FROM users
+    WHERE username = ?
+    LIMIT 1
+");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    $response = [
+    deliver_JSONresponse([
         "code" => 401,
         "status" => 401,
         "data" => "Ongeldige login"
-    ];
-    deliver_JSONresponse($response);
+    ]);
     exit;
 }
 
 $user = $result->fetch_assoc();
 
+deliver_JSONresponse([
+  "code" => 999,
+  "status" => 200,
+  "data" => [
+    "received_user" => $username,
+    "received_pw_len" => strlen($password),
+    "hash_prefix" => substr($user['password_hash'], 0, 4)
+  ]
+]);
+exit;
+
+
 if (!password_verify($password, $user['password_hash'])) {
-    $response = [
+    deliver_JSONresponse([
         "code" => 401,
         "status" => 401,
         "data" => "Ongeldige login"
-    ];
-    deliver_JSONresponse($response);
+    ]);
     exit;
 }
 
-// ✅ Login OK
-$response = [
+deliver_JSONresponse([
     "code" => 200,
     "status" => 200,
     "data" => [
         "user_id" => (int)$user['user_id'],
         "username" => $user['username']
     ]
-];
-
-deliver_JSONresponse($response);
+]);
 exit;
