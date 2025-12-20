@@ -1,12 +1,23 @@
 <?php
-// --- "add" een concert  
+// --- "add" een user
 
 // Zijn de nodige parameters meegegeven in de request?
-check_required_fields(["username"]);
+check_required_fields(["username", "password"]);
+
+$username = trim($postvars['username']);
+$password = $postvars['password'];
+
+// basis validatie
+if ($username === '' || $password === '') {
+    die('{"error":"Username en password mogen niet leeg zijn","status":"fail"}');
+}
+
+// hash het wachtwoord (veilig)
+$password_hash = password_hash($password, PASSWORD_DEFAULT);
 
 if(!$stmt = $conn->prepare("
-    INSERT INTO users (username) 
-    VALUES (?)
+    INSERT INTO users (username, password_hash)
+    VALUES (?, ?)
 ")){
     die('{"error":"Prepared Statement failed on prepare",
          "errNo":' . json_encode($conn->errno) . ',
@@ -14,9 +25,9 @@ if(!$stmt = $conn->prepare("
          "status":"fail"}');
 }
 
-
-if(!$stmt->bind_param("s",
-    htmlentities($postvars['username'])
+if(!$stmt->bind_param("ss",
+    htmlentities($username),
+    $password_hash
 )){
     die('{"error":"Prepared Statement bind failed on bind",
          "errNo":' . json_encode($conn->errno) . ',
@@ -39,5 +50,5 @@ $stmt->close();
 // laatst toegevoegde ID
 $id = $conn->insert_id;
 
-die('{"data":"ok","message":"Record added successfully","status":200, "id": ' . $id . '}');
+die('{"data":"ok","message":"User added successfully","status":200, "id": ' . $id . '}');
 ?>
