@@ -1,22 +1,10 @@
 // ============================================
-// CONFIG
+// DECLARATIONS
 // ============================================
-const baseApiAddress = "https://www.sofianeennali-odisee.be/wm/perso/GainsUp/api/";
-const alertContainer = document.getElementById("alert");
+const baseApiAddress = 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/';
+const alertContainer = document.getElementById('alert');
 
-let registerModal = null;
-
-// ============================================
-// HELPERS
-// ============================================
-function alerter(message, type = "info") {
-    alertContainer.innerHTML = `
-    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-      ${message}
-      <button class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  `;
-}
+let registerModal;
 
 // ============================================
 // LOGIN
@@ -28,7 +16,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const password = document.getElementById("loginPassword").value;
 
     if (!username || !password) {
-        alerter("❌ Username et mot de passe sont obligatoires", "danger");
+        alerter("Veuillez remplir tous les champs", "danger");
         return;
     }
 
@@ -39,35 +27,51 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
             body: JSON.stringify({ username, password })
         });
 
-        // Si PHP renvoie du HTML (error), ça va throw ici -> catch
-        const data = await res.json();
-
-        // Ton API renvoie: { status: 200, data: {...} } ou { status: 401, data: "..." }
-        if (!res.ok || data.status !== 200) {
-            alerter(data.data || "Login échoué", "danger");
+        // si ton API renvoie parfois du HTML/Warning, on essaie de parser proprement
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.error("Réponse non JSON:", text);
+            alerter("Erreur serveur (réponse non JSON)", "danger");
             return;
         }
 
-        // ✅ login OK
-        // data.data = { user_id, username }
-        localStorage.setItem("user", JSON.stringify(data.data));
+        if (!res.ok || data.status !== 200) {
+            alerter(data.data || data.message || "Login échoué", "danger");
+            return;
+        }
 
-        // ✅ IMPORTANT : compat avec ton menu existant (sélection utilisateur)
-        localStorage.setItem("selectedUserId", String(data.data.user_id));
-        localStorage.setItem("selectedUsername", data.data.username);
+        // ✅ user data (selon ton login.php : { status:200, data:{user_id, username} })
+        const user = data.data;
+
+        // 1) nouveau système
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // 2) ancien système (menu.js existant)
+        localStorage.setItem("selectedUserId", String(user.user_id));
+        localStorage.setItem("selectedUsername", user.username);
+
+        // Nettoyage optionnel (évite conflits)
+        localStorage.removeItem("activeSessionId");
+        localStorage.removeItem("selectedMuscleGroup");
+        localStorage.removeItem("selectedExerciseId");
+        localStorage.removeItem("selectedExerciseName");
 
         window.location.href = "menu.html";
+
     } catch (err) {
         console.error(err);
-        alerter("Erreur serveur (API ou JSON invalide)", "danger");
+        alerter("Erreur serveur", "danger");
     }
 });
 
 // ============================================
-// REGISTER (MODAL)
+// REGISTER (Créer un compte)
 // ============================================
 document.getElementById("btnOpenRegister").addEventListener("click", () => {
-    if (registerModal) registerModal.show();
+    registerModal.show();
 });
 
 document.getElementById("btnRegister").addEventListener("click", async () => {
@@ -75,7 +79,7 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
     const password = document.getElementById("registerPassword").value;
 
     if (!username || !password) {
-        alerter("❌ Tous les champs sont obligatoires", "danger");
+        alerter("Tous les champs sont obligatoires", "danger");
         return;
     }
 
@@ -86,47 +90,68 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
             body: JSON.stringify({ username, password })
         });
 
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.error("Réponse non JSON:", text);
+            alerter("Erreur serveur (réponse non JSON)", "danger");
+            return;
+        }
 
         if (!res.ok || (data.status !== 200 && data.status !== 201)) {
             alerter(data.message || data.data || "Création échouée", "danger");
             return;
         }
 
-        alerter(`✅ Compte "${username}" créé avec succès`, "success");
+        alerter("✅ Compte créé avec succès", "success");
+        registerModal.hide();
 
-        // reset inputs
-        document.getElementById("registerUsername").value = "";
-        document.getElementById("registerPassword").value = "";
+        // Optionnel: pré-remplir le login
+        document.getElementById("loginUsername").value = username;
+        document.getElementById("loginPassword").value = password;
 
-        // close modal
-        if (registerModal) registerModal.hide();
     } catch (err) {
         console.error(err);
-        alerter("Erreur serveur (register)", "danger");
+        alerter("Erreur serveur", "danger");
     }
 });
 
 // ============================================
-// TOGGLE PASSWORD (LOGIN)
+// Toggle password visibility (login)
 // ============================================
 document.getElementById("togglePassword").addEventListener("click", () => {
     const pwInput = document.getElementById("loginPassword");
     const btn = document.getElementById("togglePassword");
 
-    const isHidden = pwInput.type === "password";
-    pwInput.type = isHidden ? "text" : "password";
-    btn.textContent = isHidden ? "🙈" : "👁️";
+    if (pwInput.type === "password") {
+        pwInput.type = "text";
+        btn.textContent = "🙈";
+    } else {
+        pwInput.type = "password";
+        btn.textContent = "👁️";
+    }
 });
+
+// ============================================
+// ALERT
+// ============================================
+function alerter(message, type = "info") {
+    alertContainer.innerHTML = `
+    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+      ${message}
+      <button class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  `;
+}
 
 // ============================================
 // INIT
 // ============================================
 document.addEventListener("DOMContentLoaded", () => {
     const modalEl = document.getElementById("registerModal");
-    if (modalEl) registerModal = new bootstrap.Modal(modalEl);
-
-    // (Optionnel) si déjà connecté -> direct menu
-    const user = localStorage.getItem("user");
-    if (user) window.location.href = "menu.html";
+    if (modalEl) {
+        registerModal = new bootstrap.Modal(modalEl);
+    }
 });
