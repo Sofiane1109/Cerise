@@ -63,7 +63,7 @@ $postvars = json_decode($body, true);
 $response['code'] = 1;
 $response['status'] = $api_response_code[$response['code']]['HTTP Response'];
 
-function deliver_response(&$api_response) {
+function deliver_response($api_response) {
 	// Define HTTP responses
 	$http_response_code = array(200 => 'OK', 400 => 'Bad Request', 401 => 'Unauthorized', 403 => 'Forbidden', 404 => 'Not Found');
 	// Set HTTP Response
