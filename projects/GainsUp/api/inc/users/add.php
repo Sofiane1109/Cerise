@@ -1,18 +1,13 @@
 <?php
-// --- "add" een user
-
-// Zijn de nodige parameters meegegeven in de request?
 check_required_fields(["username", "password"]);
 
 $username = trim($postvars['username']);
-$password = $postvars['password'];
+$password = trim($postvars['password']);
 
-// basis validatie
 if ($username === '' || $password === '') {
     die('{"error":"Username en password mogen niet leeg zijn","status":"fail"}');
 }
 
-// hash het wachtwoord (veilig)
 $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
 if(!$stmt = $conn->prepare("
@@ -25,10 +20,7 @@ if(!$stmt = $conn->prepare("
          "status":"fail"}');
 }
 
-if(!$stmt->bind_param("ss",
-    htmlentities($username),
-    $password_hash
-)){
+if(!$stmt->bind_param("ss", $username, $password_hash)){
     die('{"error":"Prepared Statement bind failed on bind",
          "errNo":' . json_encode($conn->errno) . ',
          "mysqlError":' . json_encode($conn->error) . ',
@@ -46,8 +38,6 @@ if($conn->affected_rows == 0) {
 }
 
 $stmt->close();
-
-// laatst toegevoegde ID
 $id = $conn->insert_id;
 
 die('{"data":"ok","message":"User added successfully","status":200, "id": ' . $id . '}');
