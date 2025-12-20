@@ -1,4 +1,4 @@
-const baseApiAddress = 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/';
+const baseApiAddress = 'https://www.sofianeennali-odisee.be/wm/perso/GainsUp/api/';
 const alertContainer = document.getElementById('alert');
 
 let registerModal;
