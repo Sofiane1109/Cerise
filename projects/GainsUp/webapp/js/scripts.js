@@ -1,10 +1,10 @@
 // ============================================
-// DECLARATIONS
+// CONFIG
 // ============================================
-const baseApiAddress = 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/';
-const alertContainer = document.getElementById('alert');
+const baseApiAddress = "https://sofianeennali-odisee.be/wm/perso/GainsUp/api/";
+const alertContainer = document.getElementById("alert");
 
-let registerModal = null;
+let registerModal;
 
 // ============================================
 // HELPERS
@@ -20,29 +20,42 @@ function alerter(message, type = "info") {
   `;
 }
 
-function saveLoggedUser(userObj) {
-    // userObj doit contenir user_id et username
-    localStorage.setItem("user", JSON.stringify(userObj));
-    localStorage.setItem("selectedUserId", String(userObj.user_id));
-    localStorage.setItem("selectedUsername", String(userObj.username));
-}
+// Normalise la réponse API pour récupérer l'utilisateur
+function extractUserFromResponse(data) {
+    // ton API retourne souvent {status:200, data:{user_id, username}}
+    if (data && data.data && typeof data.data === "object") return data.data;
 
-// Si l’API renvoie parfois {status, data:{...}} ou {status, user:{...}}
-function extractUserFromApiResponse(payload) {
-    if (!payload) return null;
-
-    // cas 1 : { status:200, data:{ user_id, username } }
-    if (payload.data && typeof payload.data === "object" && payload.data.user_id) {
-        return payload.data;
-    }
-
-    // cas 2 : { status:200, user:{ user_id, username } }
-    if (payload.user && typeof payload.user === "object" && payload.user.user_id) {
-        return payload.user;
-    }
+    // parfois {status:200, user:{...}}
+    if (data && data.user && typeof data.user === "object") return data.user;
 
     return null;
 }
+
+function saveUserSession(user) {
+    // Stockage principal
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // Compatibilité avec ton ancien code menu.js
+    if (user.user_id != null) localStorage.setItem("selectedUserId", String(user.user_id));
+    if (user.username != null) localStorage.setItem("selectedUsername", String(user.username));
+}
+
+// ============================================
+// AUTO-REDIRECT (rester connecté)
+// ============================================
+document.addEventListener("DOMContentLoaded", () => {
+    // Init modal register
+    const modalEl = document.getElementById("registerModal");
+    if (modalEl) registerModal = new bootstrap.Modal(modalEl);
+
+    // Si déjà connecté -> menu direct
+    const existing = localStorage.getItem("user");
+    if (existing) {
+        // Optionnel: tu peux vérifier ici la validité côté serveur si tu avais un token.
+        window.location.href = "menu.html";
+        return;
+    }
+});
 
 // ============================================
 // LOGIN
@@ -56,7 +69,7 @@ if (loginForm) {
         const password = document.getElementById("loginPassword")?.value;
 
         if (!username || !password) {
-            alerter("❌ Username et mot de passe obligatoires", "danger");
+            alerter("❌ Username et mot de passe requis", "danger");
             return;
         }
 
@@ -64,42 +77,31 @@ if (loginForm) {
             const res = await fetch(baseApiAddress + "login.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password }),
             });
 
-            // Attention: si ton PHP renvoie une erreur HTML, res.json() va crash
-            const text = await res.text();
-            let payload = null;
+            const data = await res.json().catch(() => null);
 
-            try {
-                payload = JSON.parse(text);
-            } catch {
-                console.error("Réponse non JSON:", text);
-                alerter("❌ Réponse serveur invalide (pas du JSON).", "danger");
+            if (!res.ok || !data) {
+                alerter("❌ Login échoué", "danger");
                 return;
             }
 
-            if (!res.ok || payload.status !== 200) {
-                alerter(payload.data || payload.message || "Login échoué", "danger");
+            const user = extractUserFromResponse(data);
+            if (!user || user.user_id == null || !user.username) {
+                console.log("Réponse login inattendue:", data);
+                alerter("❌ Réponse serveur invalide (user manquant)", "danger");
                 return;
             }
 
-            const user = extractUserFromApiResponse(payload);
+            // ✅ Sauver session (rester connecté + compat ancienne logique)
+            saveUserSession(user);
 
-            if (!user) {
-                console.error("Payload reçu:", payload);
-                alerter("❌ Login OK mais format utilisateur invalide.", "danger");
-                return;
-            }
-
-            // ✅ on sauvegarde exactement ce que menu.js attend
-            saveLoggedUser(user);
-
-            // ✅ go menu
+            // ✅ Redirect
             window.location.href = "menu.html";
         } catch (err) {
             console.error(err);
-            alerter("Erreur serveur", "danger");
+            alerter("⚠️ Erreur serveur", "danger");
         }
     });
 }
@@ -121,7 +123,7 @@ if (btnRegister) {
         const password = document.getElementById("registerPassword")?.value;
 
         if (!username || !password) {
-            alerter("Tous les champs sont obligatoires", "danger");
+            alerter("❌ Tous les champs sont obligatoires", "danger");
             return;
         }
 
@@ -129,42 +131,33 @@ if (btnRegister) {
             const res = await fetch(baseApiAddress + "users.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password }),
             });
 
-            const text = await res.text();
-            let payload = null;
+            const data = await res.json().catch(() => null);
 
-            try {
-                payload = JSON.parse(text);
-            } catch {
-                console.error("Réponse non JSON:", text);
-                alerter("❌ Réponse serveur invalide (pas du JSON).", "danger");
+            if (!res.ok) {
+                alerter((data && (data.message || data.data)) || "❌ Création échouée", "danger");
                 return;
             }
 
-            if (!res.ok || (payload.status !== 200 && payload.status !== 201)) {
-                alerter(payload.message || payload.data || "Création échouée", "danger");
-                return;
-            }
+            alerter("✅ Compte créé avec succès. Vous pouvez vous connecter.", "success");
 
-            alerter("✅ Compte créé avec succès", "success");
+            // reset champs + fermer modal
+            const ru = document.getElementById("registerUsername");
+            const rp = document.getElementById("registerPassword");
+            if (ru) ru.value = "";
+            if (rp) rp.value = "";
             if (registerModal) registerModal.hide();
-
-            // optionnel: préremplir le login
-            const loginUsername = document.getElementById("loginUsername");
-            const loginPassword = document.getElementById("loginPassword");
-            if (loginUsername) loginUsername.value = username;
-            if (loginPassword) loginPassword.value = password;
         } catch (err) {
             console.error(err);
-            alerter("Erreur serveur", "danger");
+            alerter("⚠️ Erreur serveur", "danger");
         }
     });
 }
 
 // ============================================
-// TOGGLE PASSWORD VISIBILITY (LOGIN)
+// TOGGLE PASSWORD VISIBILITY (login)
 // ============================================
 const togglePasswordBtn = document.getElementById("togglePassword");
 if (togglePasswordBtn) {
@@ -181,13 +174,3 @@ if (togglePasswordBtn) {
         }
     });
 }
-
-// ============================================
-// INIT
-// ============================================
-document.addEventListener("DOMContentLoaded", () => {
-    const registerModalEl = document.getElementById("registerModal");
-    if (registerModalEl && window.bootstrap) {
-        registerModal = new bootstrap.Modal(registerModalEl);
-    }
-});
