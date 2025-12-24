@@ -1,151 +1,223 @@
-const baseApiAddress = 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/';
-const alertContainer = document.getElementById('alert');
+/* ============================================
+   GainsUP - stats.js (Statistiques)
+   API: stats.php
+   - muscles
+   - exercises by muscle_group_id
+   - progress by exercise_id + metric
+   ============================================ */
 
-const muscleSelect = document.getElementById('muscleSelect');
-const exerciseSelect = document.getElementById('exerciseSelect');
-const metricSelect = document.getElementById('metricSelect');
-const hint = document.getElementById('hint');
-
-let chart;
-let exercises = [];
-
-function alerter(message, type = "info") {
-    alertContainer.innerHTML = `
-    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  `;
-}
-
-function getLoggedUserId() {
-    // compat login + ancien système
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-        try {
-            const u = JSON.parse(userStr);
-            if (u?.user_id) return u.user_id;
-        } catch { }
+const CONFIG = {
+    baseApi: 'https://sofianeennali-odisee.be/wm/perso/GainsUp/api/',
+    endpoint: 'stats.php',
+    selectors: {
+        btnBack: '#btnBack',
+        selectMuscle: '#selectMuscle',
+        selectExercise: '#selectExercise',
+        selectMetric: '#selectMetric',
+        chartHint: '#chartHint',
+        chartCanvas: '#progressChart'
     }
-    const old = localStorage.getItem("selectedUserId");
-    return old ? parseInt(old, 10) : null;
+};
+
+const state = {
+    muscles: [],
+    exercises: [],
+    selectedMuscleId: '',
+    selectedExerciseId: '',
+    selectedMetric: 'poids_max',
+    chart: null
+};
+
+function $(s) { return document.querySelector(s); }
+
+function resetSelect(el, placeholder, disabled = true) {
+    if (!el) return;
+    el.innerHTML = `<option value="">${placeholder}</option>`;
+    el.disabled = disabled;
 }
 
-async function loadExercises() {
-    const res = await fetch(baseApiAddress + "exercises.php", { method: "GET" });
-    const data = await res.json();
-
-    if (!res.ok) throw new Error("Erreur chargement exercices");
-    exercises = Array.isArray(data.data) ? data.data : [];
-
-    // groupes uniques
-    const groups = [...new Set(exercises.map(e => e.muscle_group))].sort((a, b) => a.localeCompare(b));
-    muscleSelect.innerHTML = `<option value="">-- Choisir --</option>` + groups.map(g => `<option value="${g}">${g}</option>`).join("");
+function fillSelect(el, items, placeholder) {
+    if (!el) return;
+    const opts = [`<option value="">${placeholder}</option>`];
+    for (const it of items) opts.push(`<option value="${it.id}">${it.name}</option>`);
+    el.innerHTML = opts.join('');
+    el.disabled = false;
 }
 
-function populateExercises(group) {
-    const list = exercises.filter(e => e.muscle_group === group);
-
-    exerciseSelect.disabled = list.length === 0;
-    exerciseSelect.innerHTML =
-        list.length === 0
-            ? `<option value="">-- Aucun exercice --</option>`
-            : `<option value="">-- Choisir --</option>` + list.map(e => `<option value="${e.exercise_id}">${e.name}</option>`).join("");
+function showHint(msg) {
+    const hint = $(CONFIG.selectors.chartHint);
+    if (hint) hint.textContent = msg;
 }
 
-function initChart() {
-    const ctx = document.getElementById("statsChart");
-    chart = new Chart(ctx, {
-        type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Progression",
-                data: [],
-                tension: 0.25
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: true }
-            },
-            scales: {
-                y: { beginAtZero: false }
-            }
-        }
-    });
-}
+async function getJson(params) {
+    const url = new URL(CONFIG.baseApi + CONFIG.endpoint);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-async function loadStats(userId, exerciseId, metric) {
-    const res = await fetch(baseApiAddress + "stats.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, exercise_id: parseInt(exerciseId, 10), metric })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.data || "Erreur stats");
-
-    const points = Array.isArray(data.data) ? data.data : [];
-
-    chart.data.labels = points.map(p => p.label);
-    chart.data.datasets[0].data = points.map(p => p.value);
-
-    const metricLabel =
-        metric === "best_1rm" ? "1RM estimé" :
-            metric === "volume" ? "Volume (kg)" :
-                "Poids max";
-
-    chart.data.datasets[0].label = metricLabel;
-    chart.update();
-
-    hint.textContent = points.length
-        ? `✅ ${points.length} points chargés`
-        : `Aucune donnée pour cet exercice.`;
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-    const userId = getLoggedUserId();
-    if (!userId) {
-        alerter("⚠️ Connecte-toi d'abord", "warning");
-        setTimeout(() => window.location.href = "index.html", 800);
-        return;
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status} ${t}`);
     }
+    return res.json();
+}
 
-    initChart();
+/* =========================
+   API
+   ========================= */
+const API = {
+    fetchMuscles() {
+        return getJson({ action: 'muscles' });
+    },
+    fetchExercises(muscleGroupId) {
+        return getJson({ action: 'exercises', muscle_group_id: muscleGroupId });
+    },
+    fetchProgress(exerciseId, metric) {
+        return getJson({ action: 'progress', exercise_id: exerciseId, metric });
+    }
+};
+
+/* =========================
+   CHART (Chart.js optional)
+   ========================= */
+function destroyChart() {
+    if (state.chart) {
+        state.chart.destroy();
+        state.chart = null;
+    }
+}
+
+async function loadAndRenderChart() {
+    if (!state.selectedExerciseId) return;
+
+    showHint('Chargement de la progression...');
+    destroyChart();
 
     try {
-        await loadExercises();
+        const data = await API.fetchProgress(state.selectedExerciseId, state.selectedMetric);
+
+        // Si tu n’as pas encore Chart.js, on affiche juste un message
+        const canvas = $(CONFIG.selectors.chartCanvas);
+        if (!canvas || typeof Chart === 'undefined') {
+            showHint(`Données prêtes (${data.labels.length} points). Ajoute Chart.js pour afficher le graphique.`);
+            console.log('Progress data:', data);
+            return;
+        }
+
+        // Chart.js
+        state.chart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: state.selectedMetric,
+                    data: data.values,
+                    tension: 0.25
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        showHint('');
     } catch (e) {
         console.error(e);
-        alerter("❌ Impossible de charger les exercices", "danger");
+        showHint("Erreur chargement progression.");
+    }
+}
+
+/* =========================
+   EVENTS
+   ========================= */
+function bindEvents() {
+    const btnBack = $(CONFIG.selectors.btnBack);
+    const selectMuscle = $(CONFIG.selectors.selectMuscle);
+    const selectExercise = $(CONFIG.selectors.selectExercise);
+    const selectMetric = $(CONFIG.selectors.selectMetric);
+
+    if (btnBack) {
+        btnBack.addEventListener('click', () => window.location.href = 'menu.html');
     }
 
-    muscleSelect.addEventListener("change", () => {
-        populateExercises(muscleSelect.value);
-        chart.data.labels = [];
-        chart.data.datasets[0].data = [];
-        chart.update();
-        hint.textContent = "Choisis un exercice pour voir la progression.";
-    });
+    if (selectMuscle) {
+        selectMuscle.addEventListener('change', async () => {
+            state.selectedMuscleId = selectMuscle.value;
+            state.selectedExerciseId = '';
+            state.exercises = [];
 
-    async function refresh() {
-        const group = muscleSelect.value;
-        const exerciseId = exerciseSelect.value;
-        const metric = metricSelect.value;
+            destroyChart();
+            resetSelect(selectExercise, '-- Choisir un groupe d\'abord --', true);
+            showHint("Choisis un exercice pour voir la progression.");
 
-        if (!group || !exerciseId) return;
+            if (!state.selectedMuscleId) return;
 
-        try {
-            await loadStats(userId, exerciseId, metric);
-        } catch (e) {
-            console.error(e);
-            alerter("❌ " + e.message, "danger");
-        }
+            try {
+                resetSelect(selectExercise, 'Chargement...', true);
+                const exos = await API.fetchExercises(state.selectedMuscleId);
+
+                state.exercises = Array.isArray(exos) ? exos : [];
+                if (state.exercises.length === 0) {
+                    resetSelect(selectExercise, 'Aucun exercice', true);
+                    showHint("Aucun exercice pour ce groupe.");
+                    return;
+                }
+
+                fillSelect(selectExercise, state.exercises, '-- Choisir un exercice --');
+            } catch (e) {
+                console.error(e);
+                resetSelect(selectExercise, 'Erreur chargement', true);
+                showHint("Impossible de charger les exercices.");
+            }
+        });
     }
 
-    exerciseSelect.addEventListener("change", refresh);
-    metricSelect.addEventListener("change", refresh);
+    if (selectExercise) {
+        selectExercise.addEventListener('change', () => {
+            state.selectedExerciseId = selectExercise.value;
+            if (!state.selectedExerciseId) {
+                destroyChart();
+                showHint("Choisis un exercice pour voir la progression.");
+                return;
+            }
+            loadAndRenderChart();
+        });
+    }
+
+    if (selectMetric) {
+        selectMetric.addEventListener('change', () => {
+            state.selectedMetric = selectMetric.value || 'poids_max';
+            if (state.selectedExerciseId) loadAndRenderChart();
+        });
+    }
+}
+
+/* =========================
+   INIT
+   ========================= */
+async function initStats() {
+    const selectMuscle = $(CONFIG.selectors.selectMuscle);
+    const selectExercise = $(CONFIG.selectors.selectExercise);
+    const selectMetric = $(CONFIG.selectors.selectMetric);
+
+    resetSelect(selectMuscle, 'Chargement...', true);
+    resetSelect(selectExercise, '-- Choisir un groupe d\'abord --', true);
+    showHint("Choisis un exercice pour voir la progression.");
+
+    if (selectMetric && !selectMetric.value) selectMetric.value = state.selectedMetric;
+
+    try {
+        const muscles = await API.fetchMuscles();
+        state.muscles = Array.isArray(muscles) ? muscles : [];
+        fillSelect(selectMuscle, state.muscles, '-- Choisir --');
+    } catch (e) {
+        console.error(e);
+        resetSelect(selectMuscle, 'Erreur chargement', true);
+        showHint("Impossible de charger les groupes musculaires.");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    initStats();
 });

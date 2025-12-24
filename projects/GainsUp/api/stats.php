@@ -1,59 +1,106 @@
 <?php
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
+
 define('INDEX', true);
 
-require 'inc/dbcon.php';
-require 'inc/base.php';
+require_once __DIR__ . '/inc/dbcon.php'; // -> fournit $conn (mysqli)
+require_once __DIR__ . '/inc/base.php';
 
-// On attend un body JSON: { "user_id": 1, "exercise_id": 3, "metric": "max_weight" }
-check_required_fields(["user_id", "exercise_id"]);
-
-$user_id = intval($postvars["user_id"]);
-$exercise_id = intval($postvars["exercise_id"]);
-$metric = $postvars["metric"] ?? "max_weight"; // max_weight | best_1rm | volume
-
-// Choix de la métrique
-if ($metric === "best_1rm") {
-    // Epley 1RM approx : weight * (1 + reps/30) ; on prend le max par date
-    $valueExpr = "MAX(s.weight * (1 + (s.reps / 30)))";
-} elseif ($metric === "volume") {
-    // volume = somme(weight*reps) par date
-    $valueExpr = "SUM(s.weight * s.reps)";
-} else {
-    // défaut : meilleur poids (max weight) par date
-    $valueExpr = "MAX(s.weight)";
+function respond($data, $code = 200) {
+    http_response_code($code);
+    echo json_encode($data);
+    exit;
 }
 
-// Query : un point par date
-$sql = "
-SELECT 
-    ws.date AS label,
-    $valueExpr AS value
-FROM workout_sessions ws
-JOIN sets s ON s.session_id = ws.session_id
-WHERE ws.user_id = ?
-  AND s.exercise_id = ?
-GROUP BY ws.date
-ORDER BY ws.date ASC
-";
+$action = $_GET['action'] ?? '';
 
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-    $response['code'] = 7;
-    $response['status'] = $api_response_code[$response['code']]['HTTP Response'];
-    $response['data'] = json_encode($conn->error);
-    deliver_response($response);
+try {
+
+    // 1) GROUPES MUSCULAIRES
+    if ($action === 'muscles') {
+        $sql = "SELECT id, name FROM muscle_groups ORDER BY name";
+        $res = mysqli_query($conn, $sql);
+        if (!$res) respond(["error" => mysqli_error($conn)], 500);
+
+        $rows = [];
+        while ($row = mysqli_fetch_assoc($res)) $rows[] = $row;
+        respond($rows);
+    }
+
+    // 2) EXERCICES PAR GROUPE
+    if ($action === 'exercises') {
+        $muscleGroupId = $_GET['muscle_group_id'] ?? '';
+        if ($muscleGroupId === '') respond(["error" => "muscle_group_id required"], 400);
+
+        $stmt = mysqli_prepare($conn, "SELECT id, name FROM exercises WHERE muscle_group_id = ? ORDER BY name");
+        if (!$stmt) respond(["error" => mysqli_error($conn)], 500);
+
+        mysqli_stmt_bind_param($stmt, "i", $muscleGroupId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $rows = [];
+        while ($row = mysqli_fetch_assoc($res)) $rows[] = $row;
+        respond($rows);
+    }
+
+    // 3) PROGRESSION
+    if ($action === 'progress') {
+        $exerciseId = $_GET['exercise_id'] ?? '';
+        $metric = $_GET['metric'] ?? 'poids_max';
+        if ($exerciseId === '') respond(["error" => "exercise_id required"], 400);
+
+        if ($metric === 'poids_max') {
+            $sql = "
+                SELECT DATE(created_at) AS d, MAX(weight) AS v
+                FROM sets
+                WHERE exercise_id = ?
+                GROUP BY DATE(created_at)
+                ORDER BY d ASC
+            ";
+        } elseif ($metric === 'reps_max') {
+            $sql = "
+                SELECT DATE(created_at) AS d, MAX(reps) AS v
+                FROM sets
+                WHERE exercise_id = ?
+                GROUP BY DATE(created_at)
+                ORDER BY d ASC
+            ";
+        } elseif ($metric === 'volume') {
+            $sql = "
+                SELECT DATE(created_at) AS d, SUM(weight * reps) AS v
+                FROM sets
+                WHERE exercise_id = ?
+                GROUP BY DATE(created_at)
+                ORDER BY d ASC
+            ";
+        } else {
+            respond(["error" => "metric invalid (poids_max|reps_max|volume)"], 400);
+        }
+
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) respond(["error" => mysqli_error($conn)], 500);
+
+        mysqli_stmt_bind_param($stmt, "i", $exerciseId);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+
+        $labels = [];
+        $values = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $labels[] = $row['d'];
+            $values[] = (float)$row['v'];
+        }
+
+        respond(["labels" => $labels, "values" => $values]);
+    }
+
+    respond(["error" => "Unknown action"], 400);
+
+} catch (Throwable $e) {
+    respond(["error" => $e->getMessage()], 500);
 }
-
-$stmt->bind_param("ii", $user_id, $exercise_id);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$response['data'] = getJsonObjFromResult($result);
-
-$result->free();
-$stmt->close();
-$conn->close();
-
-deliver_JSONresponse($response);
-exit;
-?>
