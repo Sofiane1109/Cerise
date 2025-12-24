@@ -126,7 +126,7 @@ function handleMuscleGroupSelection(event) {
 }
 
 function handleStatsClick() {
-    alerter("📊 Statistiques bientôt disponibles", "info");
+     window.location.href = "stats.html";
 }
 
 function handleClassementClick() {

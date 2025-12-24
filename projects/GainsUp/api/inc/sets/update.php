@@ -20,7 +20,7 @@ if(!$stmt->bind_param("iiiids",
     $postvars['exercise_id'],
     $postvars['set_number'],
     $postvars['reps'],
-    $postvars['weight']
+    $postvars['weight'],
     $postvars['notes']
 )){
     die('{"error":"Prepared Statement bind failed on bind",
