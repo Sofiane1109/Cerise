@@ -13,6 +13,9 @@ const btnEndSession = document.getElementById('btnEndSession');
 const activeSessionInfo = document.getElementById('activeSessionInfo');
 const alertContainer = document.getElementById('alert');
 
+// (OPTIONNEL) Si tu ajoutes un bouton "Nouveautés" dans le HTML avec id="btnNews"
+// const btnNews = document.getElementById('btnNews');
+
 // ============================================
 // INITIALISATION
 // ============================================
@@ -47,14 +50,17 @@ function initMenu() {
 
     displayUserInfo(selectedUsername);
     checkActiveSession();
+
+    // ✅ Pop-up "features à venir"
+    initComingSoonModal();
 }
 
 // ============================================
 // USER INFO
 // ============================================
 function displayUserInfo(username) {
-    userName.textContent = username;
-    userIcon.textContent = username.charAt(0).toUpperCase();
+    if (userName) userName.textContent = username;
+    if (userIcon) userIcon.textContent = username.charAt(0).toUpperCase();
 }
 
 // ============================================
@@ -64,11 +70,11 @@ function checkActiveSession() {
     const activeSessionId = localStorage.getItem('activeSessionId');
 
     if (activeSessionId) {
-        btnStartSession.style.display = 'none';
-        activeSessionInfo.style.display = 'flex';
+        if (btnStartSession) btnStartSession.style.display = 'none';
+        if (activeSessionInfo) activeSessionInfo.style.display = 'flex';
     } else {
-        btnStartSession.style.display = 'block';
-        activeSessionInfo.style.display = 'none';
+        if (btnStartSession) btnStartSession.style.display = 'block';
+        if (activeSessionInfo) activeSessionInfo.style.display = 'none';
     }
 }
 
@@ -85,20 +91,20 @@ function handleStartSession() {
             notes: null
         })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 200 && data.id) {
-            localStorage.setItem('activeSessionId', data.id);
-            checkActiveSession();
-            alerter("✅ Séance démarrée !", "success");
-        } else {
-            alerter("❌ Erreur lors du démarrage de la séance", "danger");
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alerter("⚠️ Erreur réseau", "danger");
-    });
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 200 && data.id) {
+                localStorage.setItem('activeSessionId', data.id);
+                checkActiveSession();
+                alerter("✅ Séance démarrée !", "success");
+            } else {
+                alerter("❌ Erreur lors du démarrage de la séance", "danger");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alerter("⚠️ Erreur réseau", "danger");
+        });
 }
 
 function handleEndSession() {
@@ -126,7 +132,7 @@ function handleMuscleGroupSelection(event) {
 }
 
 function handleStatsClick() {
-     window.location.href = "statistique.html";
+    window.location.href = "statistique.html";
 }
 
 function handleClassementClick() {
@@ -150,9 +156,63 @@ function handleChangeUser() {
 }
 
 // ============================================
+// COMING SOON MODAL (Bootstrap modal)
+// Requiert : le HTML du modal (#comingSoonModal) dans menu.html
+// ============================================
+function initComingSoonModal() {
+    const LS_KEY = "gainsup_hide_comingsoon";
+    const modalEl = document.getElementById("comingSoonModal");
+
+    // Si le modal n'existe pas dans le HTML, on ne fait rien
+    if (!modalEl) return;
+
+    // Bootstrap doit être chargé (bundle)
+    if (typeof bootstrap === "undefined" || !bootstrap.Modal) {
+        console.warn("⚠️ Bootstrap Modal non disponible. Vérifie bootstrap.bundle.min.js");
+        return;
+    }
+
+    const dontShow = document.getElementById("dontShowComingSoon");
+    const btnOk = document.getElementById("btnOkComingSoon");
+
+    const modal = new bootstrap.Modal(modalEl, {
+        backdrop: true,
+        keyboard: true
+    });
+
+    // Ouvrir auto 1 seule fois (si pas désactivé)
+    const hide = localStorage.getItem(LS_KEY);
+    if (hide !== "1") {
+        modal.show();
+    }
+
+    // OK ferme le modal
+    if (btnOk) {
+        btnOk.addEventListener("click", () => {
+            if (dontShow && dontShow.checked) {
+                localStorage.setItem(LS_KEY, "1");
+            }
+            modal.hide();
+        });
+    }
+
+    // Si fermeture via X/backdrop, on applique aussi le "ne plus afficher" si coché
+    modalEl.addEventListener("hidden.bs.modal", () => {
+        if (dontShow && dontShow.checked) {
+            localStorage.setItem(LS_KEY, "1");
+        }
+    });
+
+    // Optionnel: l’ouvrir manuellement depuis un bouton
+    window.openComingSoonModal = () => modal.show();
+}
+
+// ============================================
 // ALERT
 // ============================================
 function alerter(message, type = "info") {
+    if (!alertContainer) return;
+
     alertContainer.innerHTML = `
         <div class="alert alert-${type} alert-dismissible fade show" role="alert">
             ${message}
@@ -177,10 +237,13 @@ function alerter(message, type = "info") {
 document.addEventListener('DOMContentLoaded', () => {
     initMenu();
 
-    muscleGroupGrid.addEventListener('click', handleMuscleGroupSelection);
-    btnStartSession.addEventListener('click', handleStartSession);
-    btnEndSession.addEventListener('click', handleEndSession);
-    btnStats.addEventListener('click', handleStatsClick);
-    btnClassement.addEventListener('click', handleClassementClick);
-    btnChangeUser.addEventListener('click', handleChangeUser);
+    if (muscleGroupGrid) muscleGroupGrid.addEventListener('click', handleMuscleGroupSelection);
+    if (btnStartSession) btnStartSession.addEventListener('click', handleStartSession);
+    if (btnEndSession) btnEndSession.addEventListener('click', handleEndSession);
+    if (btnStats) btnStats.addEventListener('click', handleStatsClick);
+    if (btnClassement) btnClassement.addEventListener('click', handleClassementClick);
+    if (btnChangeUser) btnChangeUser.addEventListener('click', handleChangeUser);
+
+    // (OPTIONNEL) Bouton nouveautés si tu l’ajoutes
+    if (btnNews) btnNews.addEventListener('click', () => window.openComingSoonModal?.());
 });
