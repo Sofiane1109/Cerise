@@ -1,13 +1,123 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CalendarEvent } from '../types';
 import { getItem, setItem } from '../utils/storage';
 import { today, toDateStr, parseLocal, uid } from '../utils/helpers';
 import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
-import { ChevronLeft, ChevronRight, Plus, Bell, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Bell, Pencil, Trash2, RefreshCw, GraduationCap, MapPin } from 'lucide-react';
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899'];
+// ── School calendar constants ─────────────────────────────────────────────────
+const SCHOOL_COLOR = '#f97316';
+const ICAL_URL = 'https://cloud.timeedit.net/be_kuleuven/web/public/s.ics?i=6u1u8X55Z015QZ55QX27XQZ485055Y840Q486y5w501Y095570451425145X5650X54175525X0X9222900656X55X5456650223110X76158509X55X2542654505X015X5X40X504550255464521145255n9706551X2620123ZXQ5609';
+const CORS_PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?',
+  'https://thingproxy.freeboard.io/fetch/',
+];
+
+// ── Personal calendar constants ────────────────────────────────────────────────
+const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+const MY_GROUP = '2I4';
+// Course-specific group overrides: if the event title contains one of these keywords, accept the given group instead
+const GROUP_OVERRIDES: { keywords: string[]; group: string }[] = [
+  { keywords: ['big data'], group: '2I3' },
+];
+
+interface SchoolEvent {
+  id: string;
+  title: string;
+  date: string;
+  time?: string;
+  endTime?: string;
+  location?: string;
+  description?: string;
+}
+
+type AnyEvent = {
+  id: string;
+  title: string;
+  time?: string;
+  endTime?: string;
+  color: string;
+  isSchool: boolean;
+  reminder?: boolean;
+  location?: string;
+};
+
+// ── iCal parser ───────────────────────────────────────────────────────────────
+function unesc(s: string): string {
+  return s.replace(/\\n/gi, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+}
+
+function parseDT(val: string): { date: string; time?: string } | null {
+  const v = val.trim();
+  if (v.length === 8) {
+    return { date: `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}` };
+  }
+  const tIdx = v.indexOf('T');
+  if (tIdx === -1) return null;
+  const dp = v.slice(0, tIdx);
+  const tp = v.slice(tIdx + 1).replace('Z', '');
+  const y = dp.slice(0, 4), mo = dp.slice(4, 6), d = dp.slice(6, 8);
+  const hh = tp.slice(0, 2), mm = tp.slice(2, 4);
+  if (v.endsWith('Z')) {
+    const dt = new Date(`${y}-${mo}-${d}T${hh}:${mm}:00Z`);
+    return {
+      date: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`,
+      time: `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`,
+    };
+  }
+  return { date: `${y}-${mo}-${d}`, time: `${hh}:${mm}` };
+}
+
+// Group pattern: e.g. "2I4", "1I2", "3BA1" — digit + letters + digit(s)
+const GROUP_RE = /\b\d[A-Z]{1,3}\d+\b/g;
+
+function belongsToGroup(ev: Partial<SchoolEvent>): boolean {
+  const raw = `${ev.title ?? ''} ${ev.description ?? ''}`;
+  const lower = raw.toLowerCase();
+  const groups = raw.match(GROUP_RE);
+  if (!groups) return true; // no group tag → general event, include
+  // If the event matches an override, use that group exclusively (ignores MY_GROUP)
+  for (const override of GROUP_OVERRIDES) {
+    if (override.keywords.some(kw => lower.includes(kw))) {
+      return groups.includes(override.group);
+    }
+  }
+  return groups.includes(MY_GROUP);
+}
+
+function parseICS(text: string): SchoolEvent[] {
+  const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+  const lines = unfolded.split(/\r\n|\r|\n/);
+  const events: SchoolEvent[] = [];
+  let cur: Partial<SchoolEvent> | null = null;
+
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
+    if (line === 'END:VEVENT') {
+      if (cur?.date && belongsToGroup(cur))
+        events.push({ id: cur.id ?? uid(), title: cur.title ?? 'Cours', date: cur.date, time: cur.time, endTime: cur.endTime, location: cur.location, description: cur.description });
+      cur = null; continue;
+    }
+    if (!cur) continue;
+    const ci = line.indexOf(':');
+    if (ci === -1) continue;
+    const prop = line.slice(0, ci).split(';')[0].toUpperCase();
+    const val  = line.slice(ci + 1);
+    if (prop === 'SUMMARY')     cur.title       = unesc(val);
+    if (prop === 'UID')         cur.id          = val;
+    if (prop === 'LOCATION')    cur.location    = unesc(val) || undefined;
+    if (prop === 'DESCRIPTION') cur.description = unesc(val) || undefined;
+    if (prop === 'DTSTART') { const p = parseDT(val); if (p) { cur.date = p.date; cur.time = p.time; } }
+    if (prop === 'DTEND')   { const p = parseDT(val); if (p) { cur.endTime = p.time; } }
+  }
+  return events.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ── Calendar helpers ──────────────────────────────────────────────────────────
 function getMonthGrid(year: number, month: number): Date[] {
   const first = new Date(year, month, 1);
   const start = new Date(first);
@@ -29,25 +139,60 @@ function getWeekDays(ref: Date): Date[] {
   });
 }
 
-const EMPTY_EVENT = { title: '', date: today(), time: '', color: COLORS[0], reminder: false };
+const EMPTY_FORM = { title: '', date: today(), time: '', color: COLORS[0], reminder: false };
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function Calendar() {
-  const [events, setEvents]     = useState<CalendarEvent[]>(() => getItem('myne:events', []));
-  const [view, setView]         = useState<'month' | 'week'>('month');
-  const [cursor, setCursor]     = useState(new Date());
-  const [modal, setModal]       = useState(false);
-  const [editTarget, setEditTarget] = useState<CalendarEvent | null>(null);
-  const [form, setForm]         = useState<typeof EMPTY_EVENT>({ ...EMPTY_EVENT, date: today() });
+  const [events, setEvents]         = useState<CalendarEvent[]>(() => getItem('myne:events', []));
+  const [schoolEvents, setSchoolEv] = useState<SchoolEvent[]>(() => getItem('myne:calendar:school', []));
+  const [schoolLoading, setLoading] = useState(false);
+  const [schoolError, setError]     = useState<string | null>(null);
 
+  const [view, setView]     = useState<'month' | 'week'>('month');
+  const [cursor, setCursor] = useState(new Date());
+  const [modal, setModal]   = useState(false);
+  const [editTarget, setEditTarget]   = useState<CalendarEvent | null>(null);
+  const [schoolDetail, setSchoolDet] = useState<SchoolEvent | null>(null);
+  const [evPage, setEvPage]         = useState(0);
+  const [form, setForm]     = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
+
+  // ── Fetch school iCal ────────────────────────────────────────────────────
+  const fetchSchool = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    let lastErr: unknown;
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const res = await fetch(proxy + encodeURIComponent(ICAL_URL));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const parsed = parseICS(text);
+        setSchoolEv(parsed);
+        setItem('myne:calendar:school', parsed);
+        setLoading(false);
+        return;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    console.error('All CORS proxies failed:', lastErr);
+    setError('Impossible de charger le calendrier scolaire');
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchSchool(); }, [fetchSchool]);
+
+  // ── Personal events ──────────────────────────────────────────────────────
   const save = (list: CalendarEvent[]) => { setEvents(list); setItem('myne:events', list); };
 
   const openAdd = (date?: string) => {
     setEditTarget(null);
-    setForm({ ...EMPTY_EVENT, date: date ?? today() });
+    setForm({ ...EMPTY_FORM, date: date ?? today() });
     setModal(true);
   };
 
   const openEdit = (e: CalendarEvent) => {
+    if (e.taskId) return; // task-synced events: read-only
     setEditTarget(e);
     setForm({ title: e.title, date: e.date, time: e.time ?? '', color: e.color, reminder: e.reminder });
     setModal(true);
@@ -65,19 +210,29 @@ export default function Calendar() {
 
   const remove = (id: string) => save(events.filter(e => e.id !== id));
 
+  // ── Merged events for a day ──────────────────────────────────────────────
+  const allEventsFor = (d: Date): AnyEvent[] => {
+    const s = toDateStr(d);
+    const personal: AnyEvent[] = events
+      .filter(e => e.date === s)
+      .map(e => ({ id: e.id, title: e.title, time: e.time, color: e.color, isSchool: false, reminder: e.reminder }));
+    const school: AnyEvent[] = schoolEvents
+      .filter(e => e.date === s)
+      .map(e => ({ id: e.id, title: e.title, time: e.time, endTime: e.endTime, color: SCHOOL_COLOR, isSchool: true, location: e.location }));
+    return [...personal, ...school].sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
+  };
+
+  // ── Navigation ───────────────────────────────────────────────────────────
   const todayStr = today();
 
-  // Navigation
   const prev = () => {
     const d = new Date(cursor);
-    if (view === 'month') d.setMonth(d.getMonth() - 1);
-    else d.setDate(d.getDate() - 7);
+    view === 'month' ? d.setMonth(d.getMonth() - 1) : d.setDate(d.getDate() - 7);
     setCursor(d);
   };
   const next = () => {
     const d = new Date(cursor);
-    if (view === 'month') d.setMonth(d.getMonth() + 1);
-    else d.setDate(d.getDate() + 7);
+    view === 'month' ? d.setMonth(d.getMonth() + 1) : d.setDate(d.getDate() + 7);
     setCursor(d);
   };
 
@@ -93,10 +248,45 @@ export default function Calendar() {
   const monthGrid = view === 'month' ? getMonthGrid(cursor.getFullYear(), cursor.getMonth()) : [];
   const weekDays  = view === 'week'  ? getWeekDays(cursor) : [];
 
-  const eventsFor = (d: Date) => {
-    const s = toDateStr(d);
-    return events.filter(e => e.date === s).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+  // ── Event chip renderer (shared) ─────────────────────────────────────────
+  const renderChip = (e: AnyEvent, compact: boolean) => {
+    const onClick = (ev: React.MouseEvent) => {
+      ev.stopPropagation();
+      if (e.isSchool) {
+        setSchoolDet(schoolEvents.find(s => s.id === e.id) ?? null);
+      } else {
+        const personal = events.find(p => p.id === e.id);
+        if (personal) openEdit(personal);
+      }
+    };
+
+    return (
+      <div
+        key={e.id}
+        onClick={onClick}
+        className={`text-xs rounded truncate text-white cursor-pointer hover:opacity-80 transition-opacity ${compact ? 'px-1.5 py-0.5' : 'px-2 py-1.5'}`}
+        style={{ backgroundColor: e.color + (e.isSchool ? 'dd' : 'cc') }}
+      >
+        {!compact && e.isSchool && (
+          <p className="text-[10px] opacity-70 flex items-center gap-0.5 mb-0.5">
+            <GraduationCap size={8} /> École
+          </p>
+        )}
+        {e.time && <span className={`mr-1 opacity-80 ${compact ? '' : 'text-[10px] block'}`}>{e.time}</span>}
+        <span className={compact ? '' : 'font-medium'}>{e.title}</span>
+        {compact && e.isSchool && <GraduationCap size={8} className="inline ml-1 opacity-70" />}
+        {!e.isSchool && e.reminder && <Bell size={9} className="inline ml-1 opacity-70" />}
+      </div>
+    );
   };
+
+  // ── All events merged list ────────────────────────────────────────────────
+  const allEvents: AnyEvent[] = [
+    ...events.map(e => ({ id: e.id, title: e.title, time: e.time, color: e.color, isSchool: false as const, reminder: e.reminder, _date: e.date })),
+    ...schoolEvents.map(e => ({ id: e.id, title: e.title, time: e.time, endTime: e.endTime, color: SCHOOL_COLOR, isSchool: true as const, location: e.location, _date: e.date })),
+  ]
+    .filter(e => (e as any)._date >= todayStr)
+    .sort((a, b) => ((a as any)._date ?? '').localeCompare((b as any)._date ?? '') || (a.time ?? '').localeCompare(b.time ?? ''));
 
   return (
     <div className="p-6 space-y-5 max-w-6xl mx-auto">
@@ -110,14 +300,27 @@ export default function Calendar() {
           <button onClick={next} className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">
             <ChevronRight size={18} />
           </button>
-          <button
-            onClick={() => setCursor(new Date())}
-            className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-          >
+          <button onClick={() => setCursor(new Date())} className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
             Today
           </button>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* School calendar status + refresh */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/60 rounded-lg">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SCHOOL_COLOR }} />
+            <span className="text-xs text-gray-400">École</span>
+            {schoolError && <span className="text-xs text-red-400">{schoolError}</span>}
+            <button
+              onClick={fetchSchool}
+              disabled={schoolLoading}
+              title="Rafraîchir le calendrier scolaire"
+              className="text-gray-500 hover:text-white transition-colors disabled:opacity-40"
+            >
+              <RefreshCw size={13} className={schoolLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
           <div className="flex rounded-lg overflow-hidden border border-gray-800">
             {(['month', 'week'] as const).map(v => (
               <button
@@ -129,6 +332,7 @@ export default function Calendar() {
               </button>
             ))}
           </div>
+
           <button onClick={() => openAdd()} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors">
             <Plus size={16} /> Add event
           </button>
@@ -148,36 +352,19 @@ export default function Calendar() {
               const s = toDateStr(d);
               const isThisMonth = d.getMonth() === cursor.getMonth();
               const isToday = s === todayStr;
-              const dayEvents = eventsFor(d);
+              const dayEvents = allEventsFor(d);
               return (
                 <div
                   key={i}
                   onClick={() => openAdd(s)}
-                  className={`min-h-[90px] p-1.5 border-b border-r border-gray-800 cursor-pointer hover:bg-gray-800/40 transition-colors ${
-                    i % 7 === 6 ? 'border-r-0' : ''
-                  } ${i >= 35 ? 'border-b-0' : ''}`}
+                  className={`min-h-[90px] p-1.5 border-b border-r border-gray-800 cursor-pointer hover:bg-gray-800/40 transition-colors ${i % 7 === 6 ? 'border-r-0' : ''} ${i >= 35 ? 'border-b-0' : ''}`}
                 >
-                  <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-1 ${
-                    isToday ? 'bg-indigo-600 text-white' : isThisMonth ? 'text-gray-200' : 'text-gray-700'
-                  }`}>
+                  <div className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-medium mb-1 ${isToday ? 'bg-indigo-600 text-white' : isThisMonth ? 'text-gray-200' : 'text-gray-700'}`}>
                     {d.getDate()}
                   </div>
                   <div className="space-y-0.5">
-                    {dayEvents.slice(0, 3).map(e => (
-                      <div
-                        key={e.id}
-                        onClick={ev => { ev.stopPropagation(); openEdit(e); }}
-                        className="text-xs px-1.5 py-0.5 rounded truncate text-white cursor-pointer hover:opacity-80 transition-opacity"
-                        style={{ backgroundColor: e.color + 'cc' }}
-                      >
-                        {e.time && <span className="mr-1 opacity-80">{e.time}</span>}
-                        {e.title}
-                        {e.reminder && <Bell size={9} className="inline ml-1 opacity-70" />}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <p className="text-xs text-gray-500 pl-1">+{dayEvents.length - 3} more</p>
-                    )}
+                    {dayEvents.slice(0, 3).map(e => renderChip(e, true))}
+                    {dayEvents.length > 3 && <p className="text-xs text-gray-500 pl-1">+{dayEvents.length - 3}</p>}
                   </div>
                 </div>
               );
@@ -193,33 +380,17 @@ export default function Calendar() {
             {weekDays.map((d, i) => {
               const s = toDateStr(d);
               const isToday = s === todayStr;
-              const dayEvents = eventsFor(d);
+              const dayEvents = allEventsFor(d);
               return (
                 <div key={i} className={`border-r border-gray-800 last:border-r-0 ${isToday ? 'bg-indigo-950/20' : ''}`}>
-                  <div
-                    className={`py-3 text-center border-b border-gray-800 cursor-pointer hover:bg-gray-800/30 transition-colors`}
-                    onClick={() => openAdd(s)}
-                  >
+                  <div className="py-3 text-center border-b border-gray-800 cursor-pointer hover:bg-gray-800/30 transition-colors" onClick={() => openAdd(s)}>
                     <p className="text-xs text-gray-500 uppercase">{DAYS[d.getDay()]}</p>
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold mx-auto mt-1 ${
-                      isToday ? 'bg-indigo-600 text-white' : 'text-gray-200'
-                    }`}>
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold mx-auto mt-1 ${isToday ? 'bg-indigo-600 text-white' : 'text-gray-200'}`}>
                       {d.getDate()}
                     </div>
                   </div>
                   <div className="p-2 min-h-[200px] space-y-1.5 cursor-pointer" onClick={() => openAdd(s)}>
-                    {dayEvents.map(e => (
-                      <div
-                        key={e.id}
-                        onClick={ev => { ev.stopPropagation(); openEdit(e); }}
-                        className="text-xs px-2 py-1.5 rounded-lg text-white cursor-pointer hover:opacity-80 transition-opacity"
-                        style={{ backgroundColor: e.color + 'cc' }}
-                      >
-                        {e.time && <p className="opacity-80 text-[10px]">{e.time}</p>}
-                        <p className="font-medium truncate">{e.title}</p>
-                        {e.reminder && <Bell size={9} className="mt-0.5 opacity-70" />}
-                      </div>
-                    ))}
+                    {dayEvents.map(e => renderChip(e, false))}
                   </div>
                 </div>
               );
@@ -228,18 +399,12 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit personal event modal */}
       <Modal isOpen={modal} onClose={() => setModal(false)} title={editTarget ? 'Edit Event' : 'Add Event'}>
         <div className="space-y-4">
           <div>
             <label className={LABEL}>Title *</label>
-            <input
-              className={INPUT}
-              placeholder="Event title"
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              autoFocus
-            />
+            <input className={INPUT} placeholder="Event title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -255,10 +420,7 @@ export default function Calendar() {
             <label className={LABEL}>Color</label>
             <div className="flex gap-2 flex-wrap">
               {COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, color: c }))}
+                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
                   className={`w-8 h-8 rounded-full transition-transform ${form.color === c ? 'scale-125 ring-2 ring-white ring-offset-2 ring-offset-gray-900' : 'hover:scale-110'}`}
                   style={{ backgroundColor: c }}
                 />
@@ -266,20 +428,16 @@ export default function Calendar() {
             </div>
           </div>
           <label className="flex items-center gap-3 cursor-pointer">
-            <div
-              onClick={() => setForm(f => ({ ...f, reminder: !f.reminder }))}
-              className={`w-10 h-6 rounded-full transition-colors flex items-center px-0.5 ${form.reminder ? 'bg-indigo-600' : 'bg-gray-700'}`}
-            >
+            <div onClick={() => setForm(f => ({ ...f, reminder: !f.reminder }))}
+              className={`w-10 h-6 rounded-full transition-colors flex items-center px-0.5 ${form.reminder ? 'bg-indigo-600' : 'bg-gray-700'}`}>
               <div className={`w-5 h-5 rounded-full bg-white transition-transform ${form.reminder ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
             <span className="text-sm text-gray-300">Reminder</span>
           </label>
           <div className="flex gap-3 pt-2">
-            {editTarget && (
-              <button
-                onClick={() => { remove(editTarget.id); setModal(false); }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm rounded-lg transition-colors"
-              >
+            {editTarget && !editTarget.taskId && (
+              <button onClick={() => { remove(editTarget.id); setModal(false); }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm rounded-lg transition-colors">
                 <Trash2 size={14} /> Delete
               </button>
             )}
@@ -291,46 +449,120 @@ export default function Calendar() {
         </div>
       </Modal>
 
-      {/* Edit event shortcut info */}
-      {events.length > 0 && (
-        <p className="text-xs text-gray-600 text-center">Click an event to edit · Click a day to add</p>
-      )}
+      {/* School event read-only detail modal */}
+      <Modal isOpen={!!schoolDetail} onClose={() => setSchoolDet(null)} title="Cours — École">
+        {schoolDetail && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <GraduationCap size={16} style={{ color: SCHOOL_COLOR }} />
+              <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: SCHOOL_COLOR }}>KU Leuven</span>
+            </div>
+            <p className="text-white font-semibold">{schoolDetail.title}</p>
+            <p className="text-sm text-gray-400">
+              {parseLocal(schoolDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {schoolDetail.time && ` · ${schoolDetail.time}`}
+              {schoolDetail.endTime && ` → ${schoolDetail.endTime}`}
+            </p>
+            {schoolDetail.location && (
+              <p className="text-sm text-gray-400 flex items-center gap-1.5">
+                <MapPin size={13} className="shrink-0" /> {schoolDetail.location}
+              </p>
+            )}
+            <p className="text-xs text-gray-600 pt-2 border-t border-gray-800">Événement scolaire — lecture seule</p>
+          </div>
+        )}
+      </Modal>
 
-      {/* Upcoming events list */}
+      {/* All events list */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-300 mb-4 flex items-center gap-2">
-          <Bell size={16} className="text-indigo-400" /> All events
-        </h2>
-        {events.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-4">No events yet — click a day to add one</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+            <Bell size={16} className="text-indigo-400" />
+            Upcoming events
+            {schoolEvents.length > 0 && (
+              <span className="text-xs font-normal text-gray-500">
+                · {allEvents.filter(e => !(e as any).isSchool).length} personnels, {allEvents.filter(e => (e as any).isSchool).length} scolaires
+              </span>
+            )}
+          </h2>
+          {allEvents.length > 10 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{evPage * 10 + 1}–{Math.min(evPage * 10 + 10, allEvents.length)} / {allEvents.length}</span>
+              <button
+                onClick={() => setEvPage(p => Math.max(0, p - 1))}
+                disabled={evPage === 0}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                onClick={() => setEvPage(p => Math.min(Math.ceil(allEvents.length / 10) - 1, p + 1))}
+                disabled={evPage >= Math.ceil(allEvents.length / 10) - 1}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+        {allEvents.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center py-4">Geen komende events</p>
         ) : (
           <div className="space-y-2">
-            {[...events]
-              .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''))
-              .map(e => (
+            {allEvents.slice(evPage * 10, evPage * 10 + 10).map(e => {
+              const dateStr = (e as any)._date as string;
+              return (
                 <div key={e.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors">
                   <div className="w-2 h-10 rounded-full shrink-0" style={{ backgroundColor: e.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-medium">{e.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-white font-medium truncate">{e.title}</p>
+                      {e.isSchool && (
+                        <span className="shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: SCHOOL_COLOR + '30', color: SCHOOL_COLOR }}>
+                          École
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500">
-                      {parseLocal(e.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {parseLocal(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                       {e.time && ` · ${e.time}`}
-                      {e.reminder && ' 🔔'}
+                      {e.isSchool && (e as any).endTime && ` → ${(e as any).endTime}`}
+                      {!e.isSchool && e.reminder && ' 🔔'}
                     </p>
+                    {e.isSchool && e.location && (
+                      <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                        <MapPin size={10} /> {e.location}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => openEdit(e)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors">
-                      <Pencil size={14} />
+                  {!e.isSchool && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => { const p = events.find(x => x.id === e.id); if (p) openEdit(p); }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => remove(e.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/30 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                  {e.isSchool && (
+                    <button onClick={() => setSchoolDet(schoolEvents.find(s => s.id === e.id) ?? null)}
+                      className="shrink-0 text-xs text-gray-600 hover:text-gray-400 transition-colors px-2">
+                      Détails
                     </button>
-                    <button onClick={() => remove(e.id)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/30 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {events.length > 0 && (
+        <p className="text-xs text-gray-600 text-center">Click an event to edit · Click a day to add</p>
+      )}
     </div>
   );
 }

@@ -1,4 +1,6 @@
-export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hobbies' | 'nutrition' | 'wellbeing' | 'budget';
+export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hike' | 'nutrition' | 'budget';
+
+export type KanbanStatus = 'todo' | 'in_progress' | 'done';
 
 export interface CalendarEvent {
   id: string;
@@ -7,6 +9,7 @@ export interface CalendarEvent {
   time?: string;     // HH:MM
   color: string;
   reminder: boolean;
+  taskId?: string;   // set when auto-synced from a Task
 }
 
 export type Priority = 'high' | 'medium' | 'low';
@@ -17,48 +20,46 @@ export interface Task {
   priority: Priority;
   deadline?: string;  // YYYY-MM-DD
   project?: string;
-  completed: boolean;
+  status: KanbanStatus;
   createdAt: string;
 }
 
-export interface GymSet {
-  reps: number;
-  weight: number;
-}
+export type HikeDifficulty = 'easy' | 'moderate' | 'hard' | 'expert';
 
-export interface GymExercise {
-  name: string;
-  muscleGroup: string;
-  sets: GymSet[];
-}
-
-export interface HikingLog {
+export interface HikeWishlist {
   id: string;
-  type: 'hiking';
-  date: string;
+  name: string;
+  location: string;
+  estimatedDistance: number; // km
+  difficulty: HikeDifficulty;
+  link?: string;
+}
+
+export interface HikeDone {
+  id: string;
+  wishlistId?: string;
+  name: string;
+  date: string;       // YYYY-MM-DD
+  duration: number;   // minutes
   distance: number;   // km
   elevation: number;  // m
-  duration: number;   // minutes
-  notes: string;
+  rating: number;     // 1-5
+  comment: string;
 }
 
-export interface GymLog {
+export interface HikeGearCheck {
   id: string;
-  type: 'gym';
-  date: string;
-  exercises: GymExercise[];
+  label: string;
+  checked: boolean;
 }
 
-export interface SportLog {
+export interface HikeGearShop {
   id: string;
-  type: 'sport';
-  sport: string;
-  date: string;
-  duration: number;  // minutes
-  notes: string;
+  title: string;
+  link?: string;
+  price?: number;
+  bought: boolean;
 }
-
-export type ActivityLog = HikingLog | GymLog | SportLog;
 
 export interface NutritionLog {
   date: string;
@@ -75,18 +76,13 @@ export interface NutritionTargets {
   water: number;
 }
 
-export interface WellbeingLog {
-  date: string;
-  sleepDuration: number;  // hours
-  sleepQuality: number;   // 1-5
-  mood: number;           // 1-5
-  energy: number;         // 1-5
-}
-
 export type ExpenseCategory = 'food' | 'housing' | 'transport' | 'leisure' | 'health' | 'shopping' | 'services' | 'other';
+
+export type AccountId = 'cc' | 'ep';
 
 export interface BudgetEntry {
   id: string;
+  accountId: AccountId;
   type: 'expense' | 'income';
   amount: number;
   category: ExpenseCategory | 'income';
@@ -96,5 +92,11 @@ export interface BudgetEntry {
 
 export interface BudgetGoal {
   month: string;       // YYYY-MM
+  accountId: AccountId;
   savingsGoal: number;
+}
+
+export interface AccountBalances {
+  cc: number;
+  ep: number;
 }
