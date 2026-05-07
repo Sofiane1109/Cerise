@@ -9,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recha
 const DEFAULT_TARGETS: NutritionTargets = { calories: 2500, protein: 150, creatine: 5, water: 2500 };
 const TOOLTIP = { backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6', fontSize: '12px' };
 
-function greeting(): string {
+function greetingWord(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Bonjour';
   if (h < 18) return 'Bon après-midi';
@@ -40,6 +40,7 @@ function StatCard({ icon, label, value, sub, accent, onClick }: StatCardProps) {
 
 export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }) {
   const todayStr = today();
+  const userName = getItem<{ name?: string }>('myne:settings', {}).name ?? '';
 
   const rawTasks    = getItem<any[]>('myne:tasks', []);
   const tasks       = rawTasks.map((t: any): Task => ({ ...t, status: t.status ?? (t.completed ? 'done' : 'todo') }));
@@ -90,7 +91,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">{greeting()} 👋</h1>
+        <h1 className="text-2xl font-bold text-white">{greetingWord()}{userName ? `, ${userName}` : ''} 👋</h1>
         <p className="text-gray-400 text-sm mt-1">
           {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>

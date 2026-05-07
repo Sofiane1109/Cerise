@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Menu, Loader2, LogOut } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
-import type { ModuleId } from './types';
+import type { ModuleId, UserSettings } from './types';
+import { getItem } from './utils/storage';
 import { supabase } from './lib/supabase';
 import { syncOnLogin, initSync } from './lib/sync';
 import Sidebar from './components/Sidebar';
@@ -12,14 +13,25 @@ import Tasks from './modules/Tasks';
 import Hike from './modules/Hike';
 import Nutrition from './modules/Nutrition';
 import Budget from './modules/Budget';
+import Settings from './modules/Settings';
+
+const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
 
 type AppState = 'checking' | 'login' | 'syncing' | 'ready';
 
 export default function App() {
-  const [appState, setAppState] = useState<AppState>('checking');
-  const [session, setSession]   = useState<Session | null>(null);
-  const [active, setActive]     = useState<ModuleId>('dashboard');
+  const [appState, setAppState]   = useState<AppState>('checking');
+  const [session, setSession]     = useState<Session | null>(null);
+  const [active, setActive]       = useState<ModuleId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settings, setSettings]   = useState<UserSettings>(() =>
+    getItem<UserSettings>('myne:settings', DEFAULT_SETTINGS)
+  );
+
+  // Apply accent colour whenever settings change
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', settings.accentColor);
+  }, [settings.accentColor]);
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION on load — no need for a separate getSession() call
@@ -70,7 +82,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100 overflow-hidden">
-      <Sidebar active={active} onNavigate={navigate} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar active={active} onNavigate={navigate} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} settings={settings} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -97,6 +109,7 @@ export default function App() {
           {active === 'hike'      && <Hike />}
           {active === 'nutrition' && <Nutrition />}
           {active === 'budget'    && <Budget />}
+          {active === 'settings'  && <Settings onSettingsChange={s => setSettings(s)} />}
         </main>
       </div>
     </div>

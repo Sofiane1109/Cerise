@@ -1,4 +1,10 @@
-export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hike' | 'nutrition' | 'budget';
+export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hike' | 'nutrition' | 'budget' | 'settings';
+
+export interface UserSettings {
+  name: string;
+  avatar?: string;      // base64 data URL
+  accentColor: string;  // hex
+}
 
 export type KanbanStatus = 'todo' | 'in_progress' | 'done';
 

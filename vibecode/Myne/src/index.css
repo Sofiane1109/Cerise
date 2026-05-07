@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --accent: #6366f1;
+  --accent-dark: #4f46e5;
+  --accent-faint: rgba(99,102,241,0.1);
+}
+
 * { box-sizing: border-box; }
 
 body { background: #030712; color: #f3f4f6; }
