@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
 </head>
+
 <body>
     <!-- Navbar -->
     <nav class="navbar">
@@ -91,13 +93,81 @@
                 🏆 Classement
             </button>
 
+            <button class="btn btn-secondary" onclick="openComingSoonModal()">
+                Nouveautés
+            </button>
+
+
             <button class="btn-secondary-action btn-change-user" id="btnChangeUser">
                 Déconnexion
             </button>
         </div>
     </div>
 
+    <!-- Coming Soon Modal -->
+    <div class="modal fade" id="comingSoonModal" tabindex="-1" aria-labelledby="comingSoonModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content gu-glow">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="comingSoonModalLabel">🚧 Prochaines features</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="color: var(--text-gray) !important;">
+                        Quelques améliorations arrivent bientôt sur <b>GainsUp</b>.
+                    </p>
+
+                    <div class="gu-feature-list">
+                        <div class="gu-feature-card">
+                            <div class="gu-feature-title">🧠 Suggestions intelligentes</div>
+                            <div class="gu-feature-text">Rappels, recommandations, muscles oubliés, tendances.</div>
+                            <span class="gu-badge">Bientôt</span>
+                        </div>
+
+                        <div class="gu-feature-card">
+                            <div class="gu-feature-title">👤 Profil amélioré</div>
+                            <div class="gu-feature-text">Stats globales, volume total, PR, séances, progression.</div>
+                            <span class="gu-badge">Bientôt</span>
+                        </div>
+
+                        <div class="gu-feature-card">
+                            <div class="gu-feature-title">🏅 Badges & achievements</div>
+                            <div class="gu-feature-text">Récompenses pour PR, streaks, volume cumulé, constance.</div>
+                            <span class="gu-badge">Bientôt</span>
+                        </div>
+
+                        <div class="gu-feature-card">
+                            <div class="gu-feature-title">🔁 Séances plus claires</div>
+                            <div class="gu-feature-text">
+                                Une nouvelle page de séance pour voir les exercices prévus,
+                                ceux déjà faits et consulter les anciennes séances facilement.
+                            </div>
+                            <span class="gu-badge">En préparation</span>
+                        </div>
+                    </div>
+
+
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" value="" id="dontShowComingSoon">
+                        <label class="form-check-label" for="dontShowComingSoon" style="color: var(--text-gray);">
+                            Ne plus afficher automatiquement
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-primary" id="btnOkComingSoon">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/menu.js"></script>
 </body>
+
 </html>

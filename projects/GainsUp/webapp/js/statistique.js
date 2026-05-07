@@ -1,9 +1,9 @@
 /* ============================================
-   GainsUP - stats.js (Statistiques)
+   GainsUP - statistique.js (Statistiques)
    API: stats.php
-   - muscles
-   - exercises by muscle_group_id
-   - progress by exercise_id + metric
+   - action=muscles -> retourne groupes musculaires (array OU {data: array})
+   - action=exercises&muscle_group=... -> exercices d'un groupe (array OU {data: array})
+   - action=progress&exercise_id=...&metric=... -> {labels,values} OU {data:{labels,values}}
    ============================================ */
 
 const CONFIG = {
@@ -22,13 +22,29 @@ const CONFIG = {
 const state = {
     muscles: [],
     exercises: [],
-    selectedMuscleId: '',
+    selectedMuscleGroup: '',
     selectedExerciseId: '',
     selectedMetric: 'poids_max',
     chart: null
 };
 
-function $(s) { return document.querySelector(s); }
+function $(s) {
+    return document.querySelector(s);
+}
+
+function unwrap(payload) {
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+        let d = payload.data;
+
+        // 🔥 Si base.php renvoie data comme STRING JSON -> on parse
+        if (typeof d === 'string') {
+            try { d = JSON.parse(d); } catch (e) { /* ignore */ }
+        }
+        return d;
+    }
+    return payload;
+}
+
 
 function resetSelect(el, placeholder, disabled = true) {
     if (!el) return;
@@ -38,8 +54,13 @@ function resetSelect(el, placeholder, disabled = true) {
 
 function fillSelect(el, items, placeholder) {
     if (!el) return;
+
     const opts = [`<option value="">${placeholder}</option>`];
-    for (const it of items) opts.push(`<option value="${it.id}">${it.name}</option>`);
+    for (const it of items) {
+        // it.id et it.name attendus
+        opts.push(`<option value="${it.id}">${it.name}</option>`);
+    }
+
     el.innerHTML = opts.join('');
     el.disabled = false;
 }
@@ -58,8 +79,15 @@ async function getJson(params) {
         const t = await res.text().catch(() => '');
         throw new Error(`HTTP ${res.status} ${t}`);
     }
+
     return res.json();
 }
+
+function getSelectedUserId() {
+    // adapte si ton nom de clé est différent
+    return localStorage.getItem('selectedUserId') || localStorage.getItem('selected_user_id') || '';
+}
+
 
 /* =========================
    API
@@ -68,22 +96,31 @@ const API = {
     fetchMuscles() {
         return getJson({ action: 'muscles' });
     },
-    fetchExercises(muscleGroupId) {
-        return getJson({ action: 'exercises', muscle_group_id: muscleGroupId });
+    fetchExercises(muscleGroup) {
+        // ✅ stats.php attend "muscle_group"
+        return getJson({ action: 'exercises', muscle_group: muscleGroup });
     },
     fetchProgress(exerciseId, metric) {
-        return getJson({ action: 'progress', exercise_id: exerciseId, metric });
+        const userId = getSelectedUserId();
+        return getJson({ action: 'progress', exercise_id: exerciseId, user_id: userId, metric });
     }
 };
 
 /* =========================
-   CHART (Chart.js optional)
+   CHART (Chart.js)
    ========================= */
 function destroyChart() {
     if (state.chart) {
         state.chart.destroy();
         state.chart = null;
     }
+}
+
+function metricLabel(metric) {
+    if (metric === 'poids_max') return 'Poids max (kg)';
+    if (metric === 'reps_max') return 'Reps max';
+    if (metric === 'volume') return 'Volume (kg×reps)';
+    return metric;
 }
 
 async function loadAndRenderChart() {
@@ -93,30 +130,49 @@ async function loadAndRenderChart() {
     destroyChart();
 
     try {
-        const data = await API.fetchProgress(state.selectedExerciseId, state.selectedMetric);
+        const payload = await API.fetchProgress(state.selectedExerciseId, state.selectedMetric);
+        const data = unwrap(payload) || { labels: [], values: [] };
 
-        // Si tu n’as pas encore Chart.js, on affiche juste un message
+        const labels = Array.isArray(data.labels) ? data.labels : [];
+        const values = Array.isArray(data.values) ? data.values.map(Number) : [];
+
+
+        if (labels.length === 0) {
+            showHint("Aucune donnée pour cet exercice.");
+            return;
+        }
+
         const canvas = $(CONFIG.selectors.chartCanvas);
-        if (!canvas || typeof Chart === 'undefined') {
-            showHint(`Données prêtes (${data.labels.length} points). Ajoute Chart.js pour afficher le graphique.`);
+        if (!canvas) {
+            showHint("Canvas introuvable.");
+            return;
+        }
+
+        if (typeof Chart === 'undefined') {
+            showHint(`Données prêtes (${labels.length} points). Ajoute Chart.js pour afficher le graphique.`);
             console.log('Progress data:', data);
             return;
         }
 
-        // Chart.js
         state.chart = new Chart(canvas, {
             type: 'line',
             data: {
-                labels: data.labels,
+                labels: labels,
                 datasets: [{
-                    label: state.selectedMetric,
-                    data: data.values,
+                    label: metricLabel(state.selectedMetric),
+                    data: values,
                     tension: 0.25
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
             }
         });
 
@@ -137,12 +193,14 @@ function bindEvents() {
     const selectMetric = $(CONFIG.selectors.selectMetric);
 
     if (btnBack) {
-        btnBack.addEventListener('click', () => window.location.href = 'menu.html');
+        btnBack.addEventListener('click', () => {
+            window.location.href = 'menu.html';
+        });
     }
 
     if (selectMuscle) {
         selectMuscle.addEventListener('change', async () => {
-            state.selectedMuscleId = selectMuscle.value;
+            state.selectedMuscleGroup = selectMuscle.value;
             state.selectedExerciseId = '';
             state.exercises = [];
 
@@ -150,13 +208,16 @@ function bindEvents() {
             resetSelect(selectExercise, '-- Choisir un groupe d\'abord --', true);
             showHint("Choisis un exercice pour voir la progression.");
 
-            if (!state.selectedMuscleId) return;
+            if (!state.selectedMuscleGroup) return;
 
             try {
                 resetSelect(selectExercise, 'Chargement...', true);
-                const exos = await API.fetchExercises(state.selectedMuscleId);
+
+                const payload = await API.fetchExercises(state.selectedMuscleGroup);
+                const exos = unwrap(payload);
 
                 state.exercises = Array.isArray(exos) ? exos : [];
+
                 if (state.exercises.length === 0) {
                     resetSelect(selectExercise, 'Aucun exercice', true);
                     showHint("Aucun exercice pour ce groupe.");
@@ -175,11 +236,13 @@ function bindEvents() {
     if (selectExercise) {
         selectExercise.addEventListener('change', () => {
             state.selectedExerciseId = selectExercise.value;
+
             if (!state.selectedExerciseId) {
                 destroyChart();
                 showHint("Choisis un exercice pour voir la progression.");
                 return;
             }
+
             loadAndRenderChart();
         });
     }
@@ -204,11 +267,22 @@ async function initStats() {
     resetSelect(selectExercise, '-- Choisir un groupe d\'abord --', true);
     showHint("Choisis un exercice pour voir la progression.");
 
-    if (selectMetric && !selectMetric.value) selectMetric.value = state.selectedMetric;
+    if (selectMetric && !selectMetric.value) {
+        selectMetric.value = state.selectedMetric;
+    }
 
     try {
-        const muscles = await API.fetchMuscles();
+        const payload = await API.fetchMuscles();
+        const muscles = unwrap(payload);
+
         state.muscles = Array.isArray(muscles) ? muscles : [];
+
+        if (state.muscles.length === 0) {
+            resetSelect(selectMuscle, 'Aucun groupe', true);
+            showHint("Aucun groupe musculaire trouvé.");
+            return;
+        }
+
         fillSelect(selectMuscle, state.muscles, '-- Choisir --');
     } catch (e) {
         console.error(e);

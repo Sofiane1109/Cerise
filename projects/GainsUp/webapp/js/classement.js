@@ -15,7 +15,10 @@ const targetExercises = [
     { id: 10, name: 'Tractions', category: 'dos', icon: '🦾' },
     { id: 32, name: 'Curl banc incliné', category: 'biceps', icon: '💪' },
     { id: 36, name: 'Hammer curl à la poulie', category: 'biceps', icon: '💪' },
-    { id: 37, name: 'Curl pupitre', category: 'biceps', icon: '💪' }
+    { id: 37, name: 'Curl pupitre', category: 'biceps', icon: '💪' },
+    { id: 41, name: 'Leg press', category: 'jambes', icon: '🦵' },
+    { id: 44, name: 'Leg curl', category: 'jambes', icon: '🦵' },
+    { id: 45, name: 'Leg extensions', category: 'jambes', icon: '🦵' },
 ];
 
 let currentFilter = 'all';
@@ -34,46 +37,46 @@ function initClassement() {
 // Charger tous les records
 function loadAllRecords() {
     console.log('🔄 Chargement des records...');
-    
+
     Promise.all([
         fetch(baseApiAddress + "sets.php").then(r => r.json()),
         fetch(baseApiAddress + "users.php").then(r => r.json()),
         fetch(baseApiAddress + "workout_sessions.php").then(r => r.json())
     ])
-    .then(([setsData, usersData, sessionsData]) => {
-        if (setsData.status === 200 && usersData.status === 200 && sessionsData.status === 200) {
-            const sets = setsData.data;
-            const users = usersData.data;
-            const sessions = sessionsData.data;
-            
-            console.log('📦 Sets:', sets.length);
-            console.log('👥 Users:', users.length);
-            console.log('📅 Sessions:', sessions.length);
-            
-            // Calculer les records pour chaque exercice
-            allRecords = calculateRecords(sets, users, sessions);
-            
-            console.log('✅ Records calculés:', allRecords);
-            
-            displayRecords(allRecords);
-        } else {
-            alerter("❌ Erreur lors du chargement des données", "danger");
-        }
-    })
-    .catch(error => {
-        console.error('❌ Erreur:', error);
-        alerter("⚠️ Erreur lors du chargement: " + error.message, "danger");
-    });
+        .then(([setsData, usersData, sessionsData]) => {
+            if (setsData.status === 200 && usersData.status === 200 && sessionsData.status === 200) {
+                const sets = setsData.data;
+                const users = usersData.data;
+                const sessions = sessionsData.data;
+
+                console.log('📦 Sets:', sets.length);
+                console.log('👥 Users:', users.length);
+                console.log('📅 Sessions:', sessions.length);
+
+                // Calculer les records pour chaque exercice
+                allRecords = calculateRecords(sets, users, sessions);
+
+                console.log('✅ Records calculés:', allRecords);
+
+                displayRecords(allRecords);
+            } else {
+                alerter("❌ Erreur lors du chargement des données", "danger");
+            }
+        })
+        .catch(error => {
+            console.error('❌ Erreur:', error);
+            alerter("⚠️ Erreur lors du chargement: " + error.message, "danger");
+        });
 }
 
 // Calculer les records par exercice
 function calculateRecords(sets, users, sessions) {
     const records = [];
-    
+
     targetExercises.forEach(exercise => {
         // Filtrer les sets de cet exercice
         const exerciseSets = sets.filter(s => s.exercise_id == exercise.id);
-        
+
         if (exerciseSets.length === 0) {
             records.push({
                 exercise: exercise,
@@ -81,22 +84,22 @@ function calculateRecords(sets, users, sessions) {
             });
             return;
         }
-        
+
         // Grouper par utilisateur
         const userRecords = new Map();
-        
+
         exerciseSets.forEach(set => {
             // Trouver la session
             const session = sessions.find(s => s.session_id == set.session_id);
             if (!session) return;
-            
+
             const userId = session.user_id;
             const user = users.find(u => u.user_id == userId);
             if (!user) return;
-            
+
             // Utiliser le poids comme critère principal
             const weight = parseFloat(set.weight);
-            
+
             if (!userRecords.has(userId)) {
                 userRecords.set(userId, {
                     user: user,
@@ -113,7 +116,7 @@ function calculateRecords(sets, users, sessions) {
                 }
             }
         });
-        
+
         // Convertir en tableau et trier par poids décroissant, puis par reps si égalité
         const rankings = Array.from(userRecords.values())
             .sort((a, b) => {
@@ -124,13 +127,13 @@ function calculateRecords(sets, users, sessions) {
                 // Si poids égal, comparer les reps
                 return b.bestReps - a.bestReps;
             });
-        
+
         records.push({
             exercise: exercise,
             rankings: rankings
         });
     });
-    
+
     return records;
 }
 
@@ -141,7 +144,7 @@ function displayRecords(records) {
     if (currentFilter !== 'all') {
         filteredRecords = records.filter(r => r.exercise.category === currentFilter);
     }
-    
+
     if (filteredRecords.length === 0 || filteredRecords.every(r => r.rankings.length === 0)) {
         classementList.innerHTML = `
             <div class="no-history">
@@ -151,12 +154,12 @@ function displayRecords(records) {
         `;
         return;
     }
-    
+
     classementList.innerHTML = '';
-    
+
     filteredRecords.forEach(record => {
         if (record.rankings.length === 0) return;
-        
+
         const recordCard = createRecordCard(record);
         classementList.appendChild(recordCard);
     });
@@ -166,19 +169,19 @@ function displayRecords(records) {
 function createRecordCard(record) {
     const card = document.createElement('div');
     card.className = 'classement-card';
-    
+
     let rankingsHTML = '';
-    
+
     record.rankings.forEach((ranking, index) => {
         const position = index + 1;
         const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
-        
+
         const date = new Date(ranking.bestDate).toLocaleDateString('fr-FR', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
         });
-        
+
         rankingsHTML += `
             <div class="ranking-item ${position <= 3 ? 'ranking-podium' : ''}">
                 <div class="ranking-position">${medal}</div>
@@ -190,7 +193,7 @@ function createRecordCard(record) {
             </div>
         `;
     });
-    
+
     card.innerHTML = `
         <div class="classement-card-header">
             <div class="classement-exercise-icon">${record.exercise.icon}</div>
@@ -200,7 +203,7 @@ function createRecordCard(record) {
             ${rankingsHTML}
         </div>
     `;
-    
+
     return card;
 }
 
@@ -208,18 +211,18 @@ function createRecordCard(record) {
 function handleFilterClick(event) {
     const btn = event.target.closest('.filter-btn');
     if (!btn) return;
-    
+
     // Retirer la classe active de tous les boutons
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    
+
     // Ajouter la classe active au bouton cliqué
     btn.classList.add('active');
-    
+
     // Mettre à jour le filtre
     currentFilter = btn.dataset.filter;
-    
+
     console.log('🔍 Filtre:', currentFilter);
-    
+
     // Réafficher les records
     displayRecords(allRecords);
 }
@@ -237,7 +240,7 @@ function alerter(message, type = "info") {
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
-    
+
     setTimeout(() => {
         const alert = alertContainer.querySelector('.alert');
         if (alert) {
@@ -255,9 +258,9 @@ function alerter(message, type = "info") {
 
 document.addEventListener('DOMContentLoaded', () => {
     initClassement();
-    
+
     btnBack.addEventListener('click', handleBack);
-    
+
     // Filtres
     const filtersContainer = document.querySelector('.classement-filters');
     filtersContainer.addEventListener('click', handleFilterClick);
