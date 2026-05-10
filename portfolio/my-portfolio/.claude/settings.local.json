@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const si = require\\('C:/Users/Sofiane/Documents/GitHub/Cerise/portfolio/my-portfolio/node_modules/react-icons/si/index.mjs'\\); const keys = Object.keys\\(si\\).filter\\(k => k.toLowerCase\\(\\).includes\\('vscode'\\) || k.toLowerCase\\(\\).includes\\('visual'\\)\\); console.log\\(keys\\)\")",
+      "Bash(node -e \"import\\('C:/Users/Sofiane/Documents/GitHub/Cerise/portfolio/my-portfolio/node_modules/react-icons/si/index.mjs'\\).then\\(m=>console.log\\(Object.keys\\(m\\).filter\\(k=>k.toLowerCase\\(\\).includes\\('vscode'\\)||k.toLowerCase\\(\\).includes\\('visual'\\)\\)\\)\\)\")",
+      "Bash(node *)"
+    ]
+  }
+}
