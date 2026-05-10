@@ -13,7 +13,9 @@ import Tasks from './modules/Tasks';
 import Hike from './modules/Hike';
 import Nutrition from './modules/Nutrition';
 import Budget from './modules/Budget';
-import Settings from './modules/Settings';
+import Settings  from './modules/Settings';
+import SoundLog  from './modules/SoundLog';
+import { handleCallback } from './lib/spotify';
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
 
@@ -32,6 +34,20 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accentColor);
   }, [settings.accentColor]);
+
+  // Handle Spotify OAuth callback at /callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+    if (window.location.pathname === '/callback' && code) {
+      handleCallback(code)
+        .then(() => {
+          window.history.replaceState({}, '', '/');
+          setActive('soundlog');
+        })
+        .catch(err => console.error('Spotify callback error:', err));
+    }
+  }, []);
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION on load — no need for a separate getSession() call
@@ -109,6 +125,7 @@ export default function App() {
           {active === 'hike'      && <Hike />}
           {active === 'nutrition' && <Nutrition />}
           {active === 'budget'    && <Budget />}
+          {active === 'soundlog'  && <SoundLog />}
           {active === 'settings'  && <Settings onSettingsChange={s => setSettings(s)} />}
         </main>
       </div>

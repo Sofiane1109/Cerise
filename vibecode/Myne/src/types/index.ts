@@ -1,4 +1,4 @@
-export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hike' | 'nutrition' | 'budget' | 'settings';
+export type ModuleId = 'dashboard' | 'calendar' | 'tasks' | 'hike' | 'nutrition' | 'budget' | 'soundlog' | 'settings';
 
 export interface UserSettings {
   name: string;

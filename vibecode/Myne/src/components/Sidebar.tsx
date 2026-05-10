@@ -1,5 +1,5 @@
 import type { ModuleId, UserSettings } from '../types';
-import { LayoutDashboard, Calendar, Kanban, Mountain, Apple, Wallet, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, Kanban, Mountain, Apple, Wallet, Music2, Settings, X } from 'lucide-react';
 import logo from "../img/Myne.png";
 
 const NAV: { id: ModuleId; label: string; Icon: React.ElementType }[] = [
@@ -9,6 +9,7 @@ const NAV: { id: ModuleId; label: string; Icon: React.ElementType }[] = [
   { id: 'hike',      label: 'Hike',      Icon: Mountain },
   { id: 'nutrition', label: 'Nutrition', Icon: Apple },
   { id: 'budget',    label: 'Budget',    Icon: Wallet },
+  { id: 'soundlog',  label: 'SoundLog',  Icon: Music2 },
 ];
 
 interface Props {
