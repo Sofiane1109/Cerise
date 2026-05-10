@@ -97,9 +97,9 @@ function TabBtn({ label, active, onClick, Icon }: { label: string; active: boole
 }
 
 function ArtistCard({ artist, rank }: { artist: SpotifyArtist; rank: number }) {
-  const img = artist.images[1]?.url ?? artist.images[0]?.url;
+  const img = artist.images?.[1]?.url ?? artist.images?.[0]?.url;
   return (
-    <a href={artist.external_urls.spotify} target="_blank" rel="noopener noreferrer"
+    <a href={artist.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
       className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/40 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 transition-all group">
       <span className="text-xs font-bold text-gray-600 w-5 shrink-0 text-right">{rank}</span>
       {img
@@ -108,16 +108,16 @@ function ArtistCard({ artist, rank }: { artist: SpotifyArtist; rank: number }) {
       }
       <div className="min-w-0">
         <p className="text-sm text-white font-medium truncate group-hover:text-green-400 transition-colors">{artist.name}</p>
-        <p className="text-xs text-gray-500 truncate">{artist.genres.slice(0, 2).join(', ') || 'Artiste'}</p>
+        <p className="text-xs text-gray-500 truncate">{(artist.genres ?? []).slice(0, 2).join(', ') || 'Artiste'}</p>
       </div>
     </a>
   );
 }
 
 function TrackCard({ track, rank }: { track: SpotifyTrack; rank: number }) {
-  const img = track.album.images[2]?.url ?? track.album.images[0]?.url;
+  const img = track.album?.images?.[2]?.url ?? track.album?.images?.[0]?.url;
   return (
-    <a href={track.external_urls.spotify} target="_blank" rel="noopener noreferrer"
+    <a href={track.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
       className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/40 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 transition-all group">
       <span className="text-xs font-bold text-gray-600 w-5 shrink-0 text-right">{rank}</span>
       {img
@@ -126,7 +126,7 @@ function TrackCard({ track, rank }: { track: SpotifyTrack; rank: number }) {
       }
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white font-medium truncate group-hover:text-green-400 transition-colors">{track.name}</p>
-        <p className="text-xs text-gray-500 truncate">{track.artists.map(a => a.name).join(', ')}</p>
+        <p className="text-xs text-gray-500 truncate">{(track.artists ?? []).map(a => a.name).join(', ')}</p>
       </div>
       <span className="text-xs text-gray-600 shrink-0">{msToMinSec(track.duration_ms)}</span>
     </a>
@@ -308,9 +308,6 @@ export default function SoundLog() {
             </svg>
             Connecter Spotify
           </button>
-          <p className="text-xs text-gray-700 break-all">
-            Redirect URI: {import.meta.env.VITE_SPOTIFY_REDIRECT_URI ?? '⚠️ non défini'}
-          </p>
         </div>
       </div>
     );
