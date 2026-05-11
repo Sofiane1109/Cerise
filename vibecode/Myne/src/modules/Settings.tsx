@@ -30,7 +30,17 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
   const fileRef = useRef<HTMLInputElement>(null);
 
   const update = (patch: Partial<UserSettings>) =>
-    setSettings(s => ({ ...s, ...patch }));
+    setSettings(s => {
+      const next = { ...s, ...patch };
+      if ('accentColor' in patch && patch.accentColor) {
+        document.documentElement.style.setProperty('--accent', patch.accentColor);
+        const r = parseInt(patch.accentColor.slice(1, 3), 16);
+        const g = parseInt(patch.accentColor.slice(3, 5), 16);
+        const b = parseInt(patch.accentColor.slice(5, 7), 16);
+        document.documentElement.style.setProperty('--accent-faint', `rgba(${r},${g},${b},0.1)`);
+      }
+      return next;
+    });
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

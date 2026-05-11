@@ -4,7 +4,6 @@
 
 :root {
   --accent: #6366f1;
-  --accent-dark: #4f46e5;
   --accent-faint: rgba(99,102,241,0.1);
 }
 
@@ -16,3 +15,16 @@ body { background: #030712; color: #f3f4f6; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+/* Accent-aware utility classes */
+.btn-accent {
+  background-color: var(--accent);
+  color: white;
+  transition: opacity 0.15s;
+}
+.btn-accent:hover { opacity: 0.88; }
+
+.text-accent { color: var(--accent) !important; }
+.bg-accent-faint { background-color: var(--accent-faint); }
+.border-accent { border-color: var(--accent); }
+.ring-accent { --tw-ring-color: var(--accent); }

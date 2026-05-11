@@ -1,63 +1,153 @@
-import { useMemo } from 'react';
-import type { ModuleId, Task, NutritionLog, NutritionTargets, CalendarEvent, AccountBalances, BudgetEntry } from '../types';
+import { useState, useEffect, useMemo } from 'react';
+import type { ModuleId, Task, NutritionLog, NutritionTargets, CalendarEvent, AccountBalances, BudgetEntry, Subscription, HubLink, HikeDone } from '../types';
 import { getItem } from '../utils/storage';
-import { today, parseLocal, getLast7Days, shortDay } from '../utils/helpers';
-import { Card, ProgressBar } from '../components/ui';
-import { Flame, CheckSquare, Apple, Wallet, Calendar, ChevronRight, PiggyBank } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { today, parseLocal, addDays, addMonths, addYears, diffDays } from '../utils/helpers';
+import { ProgressBar } from '../components/ui';
+import {
+  CheckSquare, Apple, Wallet, Calendar, ChevronRight, PiggyBank,
+  Mountain, CreditCard, Globe, Music2, Flame,
+} from 'lucide-react';
+import { spotify, isConnected } from '../lib/spotify';
 
-const DEFAULT_TARGETS: NutritionTargets = { calories: 2500, protein: 150, creatine: 5, water: 2500 };
-const TOOLTIP = { backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6', fontSize: '12px' };
+// ── Time helpers ──────────────────────────────────────────────────────────────
+
+type TimePeriod = 'dawn' | 'day' | 'sunset' | 'night';
+
+function getTimePeriod(): TimePeriod {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 9)  return 'dawn';
+  if (h >= 9 && h < 17) return 'day';
+  if (h >= 17 && h < 20) return 'sunset';
+  return 'night';
+}
+
+const PERIOD_STYLES: Record<TimePeriod, { gradient: string; emoji: string }> = {
+  dawn:   { gradient: 'from-amber-950/50 via-orange-950/20 to-gray-950', emoji: '🌅' },
+  day:    { gradient: 'from-blue-950/40 via-indigo-950/20 to-gray-950',  emoji: '☀️' },
+  sunset: { gradient: 'from-orange-950/50 via-rose-950/20 to-gray-950',  emoji: '🌇' },
+  night:  { gradient: 'from-indigo-950/50 via-purple-950/20 to-gray-950',emoji: '🌙' },
+};
 
 function greetingWord(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Bonjour';
+  if (h >= 5 && h < 12) return 'Bonjour';
   if (h < 18) return 'Bon après-midi';
   return 'Bonsoir';
 }
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  accent: string;
-  onClick?: () => void;
-}
-function StatCard({ icon, label, value, sub, accent, onClick }: StatCardProps) {
-  return (
-    <Card onClick={onClick} className="p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accent}`}>{icon}</div>
-        {onClick && <ChevronRight size={16} className="text-gray-600 mt-1" />}
-      </div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
-    </Card>
-  );
+function getDayPct(): number {
+  const now = new Date();
+  return Math.min(100, Math.round(((now.getHours() * 60 + now.getMinutes()) / 1440) * 100));
 }
 
+// ── Subscription helpers ──────────────────────────────────────────────────────
+
+function getSubNextDate(sub: Subscription): string {
+  const todayStr = today();
+  let next = sub.startDate;
+  let i = 0;
+  while (next <= todayStr && i < 1000) {
+    i++;
+    if (sub.frequency === 'monthly')          next = addMonths(next, 1);
+    else if (sub.frequency === 'every4weeks') next = addDays(next, 28);
+    else if (sub.frequency === 'yearly')      next = addYears(next, 1);
+    else                                      next = addDays(next, sub.customDays ?? 30);
+  }
+  return next;
+}
+
+function getNextSubRenewal(subs: Subscription[]): { sub: Subscription; daysUntil: number } | null {
+  if (!subs.length) return null;
+  const todayStr = today();
+  const sorted = subs
+    .map(s => ({ sub: s, nextDate: getSubNextDate(s) }))
+    .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+  return { sub: sorted[0].sub, daysUntil: diffDays(todayStr, sorted[0].nextDate) };
+}
+
+// ── Spotify Now Playing ───────────────────────────────────────────────────────
+
+interface NowPlaying {
+  isPlaying: boolean;
+  trackName: string;
+  artistName: string;
+  albumArt?: string;
+  progressMs: number;
+  durationMs: number;
+}
+
+async function fetchNowPlaying(): Promise<NowPlaying | null> {
+  if (!isConnected()) return null;
+  try {
+    const data = await spotify.currentlyPlaying();
+    if (!data?.item) return null;
+    return {
+      isPlaying:  data.is_playing,
+      trackName:  data.item.name,
+      artistName: (data.item.artists ?? []).map((a: any) => a.name).join(', '),
+      albumArt:   data.item.album?.images?.[1]?.url,
+      progressMs: data.progress_ms ?? 0,
+      durationMs: data.item.duration_ms ?? 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+const DEFAULT_TARGETS: NutritionTargets = { calories: 2500, protein: 150, creatine: 5, water: 2500 };
+
 export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) => void }) {
+  const [clock, setClock]           = useState(new Date());
+  const [period, setPeriod]         = useState<TimePeriod>(getTimePeriod());
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+
   const todayStr = today();
   const userName = getItem<{ name?: string }>('myne:settings', {}).name ?? '';
 
-  const rawTasks    = getItem<any[]>('myne:tasks', []);
-  const tasks       = rawTasks.map((t: any): Task => ({ ...t, status: t.status ?? (t.completed ? 'done' : 'todo') }));
-  const events      = getItem<CalendarEvent[]>('myne:events', []);
-  const nutrition   = getItem<NutritionLog[]>('myne:nutrition', []);
-  const targets     = getItem<NutritionTargets>('myne:nutrition:targets', DEFAULT_TARGETS);
-  const balances    = getItem<AccountBalances>('myne:budget:balances', { cc: 0, ep: 0 });
+  const rawTasks      = getItem<any[]>('myne:tasks', []);
+  const tasks         = rawTasks.map((t: any): Task => ({ ...t, status: t.status ?? (t.completed ? 'done' : 'todo') }));
+  const events        = getItem<CalendarEvent[]>('myne:events', []);
+  const nutrition     = getItem<NutritionLog[]>('myne:nutrition', []);
+  const targets       = getItem<NutritionTargets>('myne:nutrition:targets', DEFAULT_TARGETS);
+  const balances      = getItem<AccountBalances>('myne:budget:balances', { cc: 0, ep: 0 });
   const budgetEntries = getItem<BudgetEntry[]>('myne:budget:entries', []);
+  const subs          = getItem<Subscription[]>('myne:subscriptions', []);
+  const hubLinks      = getItem<HubLink[]>('myne:hub:links', []);
+  const hikesDone     = getItem<HikeDone[]>('myne:hike:done', []);
 
-  const computedBalance = (acc: 'cc' | 'ep') => {
-    const entries = budgetEntries.filter((e: BudgetEntry) => e.accountId === acc);
-    const income   = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
-    const expenses = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
-    return balances[acc] + income - expenses;
-  };
+  useEffect(() => {
+    const id = setInterval(() => {
+      setClock(new Date());
+      setPeriod(getTimePeriod());
+    }, 15_000);
+    return () => clearInterval(id);
+  }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      const np = await fetchNowPlaying();
+      if (!cancelled) setNowPlaying(np);
+    };
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  // Derived
   const todayNutrition = nutrition.find(n => n.date === todayStr);
+  const pendingCount   = tasks.filter(t => t.status !== 'done').length;
+  const overdueTasks   = tasks.filter(t => t.status !== 'done' && t.deadline && t.deadline < todayStr).length;
+
+  const nextEvent = useMemo(() =>
+    events
+      .filter(e => e.date >= todayStr)
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''))
+    [0] ?? null,
+  [events, todayStr]);
 
   const pendingTasks = useMemo(() =>
     tasks
@@ -69,193 +159,384 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
         if (aOver !== bOver) return aOver - bOver;
         return (po[a.priority] ?? 1) - (po[b.priority] ?? 1);
       })
-      .slice(0, 6),
+      .slice(0, 5),
   [tasks, todayStr]);
 
   const upcomingEvents = useMemo(() =>
     events
       .filter(e => e.date >= todayStr)
       .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? ''))
-      .slice(0, 6),
+      .slice(0, 5),
   [events, todayStr]);
 
-  const last7 = getLast7Days();
-  const weekChart = last7.map(d => {
-    const n = nutrition.find(x => x.date === d);
-    return { day: shortDay(d), kcal: n?.calories ?? 0 };
-  });
+  const computedBalance = (acc: 'cc' | 'ep') => {
+    const ents = budgetEntries.filter(e => e.accountId === acc);
+    return balances[acc]
+      + ents.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0)
+      - ents.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  };
 
-  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.deadline && t.deadline < todayStr).length;
+  const pinnedLinks    = hubLinks.filter(l => l.pinned).slice(0, 6);
+  const nextSubRenewal = getNextSubRenewal(subs);
+  const dayPct         = getDayPct();
+  const ps             = PERIOD_STYLES[period];
+
+  const lastHike = useMemo(() => {
+    if (!hikesDone.length) return null;
+    const d = [...hikesDone].sort((a, b) => b.date.localeCompare(a.date))[0];
+    return { name: d.name, daysAgo: diffDays(d.date, todayStr) };
+  }, [hikesDone, todayStr]);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">{greetingWord()}{userName ? `, ${userName}` : ''} 👋</h1>
-        <p className="text-gray-400 text-sm mt-1">
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+    <div className="min-h-full">
+      {/* Hero with time gradient */}
+      <div className={`bg-gradient-to-b ${ps.gradient} p-6 pb-8`}>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <p className="text-gray-400 text-sm mb-1">
+              {ps.emoji} {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            <h1 className="text-2xl font-bold text-white">
+              {greetingWord()}{userName ? `, ${userName}` : ''} 👋
+            </h1>
+            <p className="text-6xl font-mono font-bold text-white mt-3 leading-none tracking-tight">
+              {clock.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+          <div className="md:min-w-[220px]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500">Avancement du jour</span>
+              <span className="text-xs font-semibold text-gray-300">{dayPct}%</span>
+            </div>
+            <ProgressBar value={dayPct} color="bg-gray-600" height="h-1.5" />
+            <p className="text-xs text-gray-600 mt-2">
+              Il reste {23 - clock.getHours()}h {59 - clock.getMinutes()}m dans la journée
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={<CheckSquare size={20} className="text-indigo-400" />}
-          label="Tâches en cours"
-          value={String(tasks.filter(t => t.status !== 'done').length)}
-          sub={overdueTasks > 0 ? `${overdueTasks} en retard` : 'tout à jour'}
-          accent="bg-indigo-500/10"
-          onClick={() => onNavigate('tasks')}
-        />
-        <StatCard
-          icon={<Apple size={20} className="text-green-400" />}
-          label="Calories aujourd'hui"
-          value={todayNutrition ? `${todayNutrition.calories}` : '—'}
-          sub={`/ ${targets.calories} kcal`}
-          accent="bg-green-500/10"
-          onClick={() => onNavigate('nutrition')}
-        />
-        <StatCard
-          icon={<Wallet size={20} className="text-indigo-400" />}
-          label="Compte courant"
-          value={`€${computedBalance('cc').toLocaleString('fr-FR', { minimumFractionDigits: 0 })}`}
-          accent="bg-indigo-500/10"
-          onClick={() => onNavigate('budget')}
-        />
-        <StatCard
-          icon={<PiggyBank size={20} className="text-emerald-400" />}
-          label="Épargne"
-          value={`€${computedBalance('ep').toLocaleString('fr-FR', { minimumFractionDigits: 0 })}`}
-          accent="bg-emerald-500/10"
-          onClick={() => onNavigate('budget')}
-        />
-      </div>
+      <div className="p-6 space-y-5 max-w-7xl mx-auto">
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending tasks */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <CheckSquare size={18} className="text-indigo-400" />
-              <h2 className="font-semibold text-white">Tâches</h2>
-              {overdueTasks > 0 && (
-                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{overdueTasks} en retard</span>
-              )}
-            </div>
-            <button onClick={() => onNavigate('tasks')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
-              Voir tout <ChevronRight size={14} />
-            </button>
-          </div>
-          {pendingTasks.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-6">Tout est fait ! 🎉</p>
-          ) : (
-            <div className="space-y-2">
-              {pendingTasks.map(t => {
-                const overdue = t.deadline && t.deadline < todayStr;
-                const pColor: Record<string, string> = { high: 'bg-red-500/20 text-red-400', medium: 'bg-amber-500/20 text-amber-400', low: 'bg-gray-500/20 text-gray-400' };
-                const statusColor: Record<string, string> = { todo: 'text-gray-500', in_progress: 'text-indigo-400' };
-                const statusLabel: Record<string, string> = { todo: 'À faire', in_progress: 'En cours' };
-                return (
-                  <div key={t.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${overdue ? 'border-red-900/50 bg-red-950/20' : 'border-gray-800 bg-gray-800/30'}`}>
-                    <div className={`w-1.5 h-full min-h-[20px] rounded-full flex-shrink-0 ${t.priority === 'high' ? 'bg-red-500' : t.priority === 'medium' ? 'bg-amber-500' : 'bg-gray-600'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{t.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className={`text-xs px-1.5 py-0.5 rounded-md ${pColor[t.priority]}`}>{t.priority}</span>
-                        <span className={`text-xs ${statusColor[t.status] ?? 'text-gray-500'}`}>{statusLabel[t.status] ?? t.status}</span>
-                        {t.project && <span className="text-xs text-gray-500">#{t.project}</span>}
-                        {t.deadline && <span className={`text-xs ${overdue ? 'text-red-400' : 'text-gray-500'}`}>{parseLocal(t.deadline).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</span>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
+        {/* Quick stats strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button onClick={() => onNavigate('calendar')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors">
+            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
+              <Calendar size={12} /> Prochain événement
+            </p>
+            {nextEvent ? (
+              <>
+                <p className="text-sm font-semibold text-white truncate">{nextEvent.title}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {nextEvent.date === todayStr ? "Aujourd'hui"
+                    : diffDays(todayStr, nextEvent.date) === 1 ? 'Demain'
+                    : `Dans ${diffDays(todayStr, nextEvent.date)}j`}
+                  {nextEvent.time && ` · ${nextEvent.time}`}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">Aucun événement</p>
+            )}
+          </button>
 
-        {/* Upcoming events */}
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar size={18} className="text-indigo-400" />
-              <h2 className="font-semibold text-white">Événements à venir</h2>
-            </div>
-            <button onClick={() => onNavigate('calendar')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
-              Calendrier <ChevronRight size={14} />
-            </button>
-          </div>
-          {upcomingEvents.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-6">Aucun événement</p>
-          ) : (
-            <div className="space-y-2">
-              {upcomingEvents.map(e => {
-                const isToday = e.date === todayStr;
-                return (
-                  <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-800 bg-gray-800/30">
-                    <div className="w-1 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: e.color }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{e.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {isToday ? "Aujourd'hui" : parseLocal(e.date).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        {e.time && ` · ${e.time}`}
-                        {e.reminder && ' 🔔'}
-                      </p>
-                    </div>
-                    {isToday && <span className="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full shrink-0">Auj.</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+          <button onClick={() => onNavigate('tasks')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors">
+            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
+              <CheckSquare size={12} /> Tâches
+            </p>
+            <p className="text-3xl font-bold text-white">{pendingCount}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {overdueTasks > 0
+                ? <span className="text-red-400">{overdueTasks} en retard</span>
+                : 'en cours'}
+            </p>
+          </button>
 
-      {/* Nutrition */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Apple size={18} className="text-green-400" />
-            <h2 className="font-semibold text-white">Nutrition aujourd'hui</h2>
-          </div>
-          <button onClick={() => onNavigate('nutrition')} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
-            <Flame size={12} /> Logger <ChevronRight size={14} />
+          <button onClick={() => onNavigate('nutrition')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors">
+            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
+              <Flame size={12} /> Calories du jour
+            </p>
+            <p className="text-3xl font-bold text-white">{todayNutrition?.calories ?? '—'}</p>
+            <p className="text-xs text-gray-400 mt-0.5">/ {targets.calories} kcal</p>
+          </button>
+
+          <button onClick={() => onNavigate('subscriptions')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors">
+            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
+              <CreditCard size={12} /> Prochain abo.
+            </p>
+            {nextSubRenewal ? (
+              <>
+                <p className="text-sm font-semibold text-white truncate">
+                  {nextSubRenewal.sub.emoji} {nextSubRenewal.sub.name}
+                </p>
+                <p className={`text-xs mt-0.5 ${
+                  nextSubRenewal.daysUntil <= 3 ? 'text-red-400'
+                  : nextSubRenewal.daysUntil <= 7 ? 'text-amber-400'
+                  : 'text-gray-400'}`}>
+                  {nextSubRenewal.daysUntil === 0 ? "Aujourd'hui"
+                    : nextSubRenewal.daysUntil === 1 ? 'Demain'
+                    : `Dans ${nextSubRenewal.daysUntil}j`}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">Aucun abonnement</p>
+            )}
           </button>
         </div>
-        {todayNutrition ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: 'Calories', val: todayNutrition.calories, target: targets.calories, unit: 'kcal', color: 'bg-amber-500' },
-              { label: 'Protéines', val: todayNutrition.protein, target: targets.protein, unit: 'g', color: 'bg-blue-500' },
-              { label: 'Eau', val: todayNutrition.water, target: targets.water, unit: 'ml', color: 'bg-cyan-500' },
-              { label: 'Créatine', val: todayNutrition.creatine, target: targets.creatine, unit: 'g', color: 'bg-purple-500' },
-            ].map(({ label, val, target, unit, color }) => (
-              <div key={label}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-400">{label}</span>
-                  <span className="text-gray-300">{val} / {target} {unit}</span>
-                </div>
-                <ProgressBar value={(val / target) * 100} color={color} height="h-2" />
+
+        {/* Main grid: tasks + events */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <CheckSquare size={15} style={{ color: 'var(--accent)' }} />
+                <h2 className="font-semibold text-white text-sm">Tâches à faire</h2>
+                {overdueTasks > 0 && (
+                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{overdueTasks} en retard</span>
+                )}
               </div>
-            ))}
+              <button onClick={() => onNavigate('tasks')}
+                className="text-xs text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
+                Tout voir <ChevronRight size={12} />
+              </button>
+            </div>
+            {pendingTasks.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-6">Tout est fait ! 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingTasks.map(t => {
+                  const overdue = t.deadline && t.deadline < todayStr;
+                  return (
+                    <div key={t.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${
+                      overdue ? 'border-red-900/50 bg-red-950/20' : 'border-gray-800'}`}>
+                      <div className={`w-1.5 h-5 rounded-full shrink-0 ${
+                        t.priority === 'high' ? 'bg-red-500' : t.priority === 'medium' ? 'bg-amber-500' : 'bg-gray-600'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">{t.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {t.project && <span className="text-xs text-gray-600">#{t.project}</span>}
+                          {t.deadline && (
+                            <span className={`text-xs ${overdue ? 'text-red-400' : 'text-gray-500'}`}>
+                              {parseLocal(t.deadline).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-2">
-            <p className="text-gray-500 text-sm mb-3">Pas encore loggé aujourd'hui</p>
-            <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekChart} barSize={16}>
-                  <XAxis dataKey="day" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip contentStyle={TOOLTIP} cursor={{ fill: 'rgba(99,102,241,0.1)' }} />
-                  <Bar dataKey="kcal" fill="#6366f1" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Calendar size={15} style={{ color: 'var(--accent)' }} />
+                <h2 className="font-semibold text-white text-sm">Événements à venir</h2>
+              </div>
+              <button onClick={() => onNavigate('calendar')}
+                className="text-xs text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
+                Calendrier <ChevronRight size={12} />
+              </button>
+            </div>
+            {upcomingEvents.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-6">Aucun événement à venir</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingEvents.map(e => {
+                  const isToday  = e.date === todayStr;
+                  const daysUntil = diffDays(todayStr, e.date);
+                  return (
+                    <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-800">
+                      <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: e.color ?? 'var(--accent)' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">{e.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {isToday ? "Aujourd'hui" : daysUntil === 1 ? 'Demain'
+                            : parseLocal(e.date).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {e.time && ` · ${e.time}`}
+                        </p>
+                      </div>
+                      {isToday && (
+                        <span className="text-xs px-2 py-0.5 rounded-full shrink-0 text-white"
+                          style={{ backgroundColor: 'var(--accent)' }}>Auj.</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Spotify + Hike + Nutrition row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Spotify Now Playing */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Music2 size={13} className="text-green-400" />
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Spotify</span>
+              <button onClick={() => onNavigate('soundlog')}
+                className="ml-auto text-gray-600 hover:text-white transition-colors">
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            {nowPlaying ? (
+              <div className="flex items-center gap-3">
+                {nowPlaying.albumArt && (
+                  <img src={nowPlaying.albumArt} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{nowPlaying.trackName}</p>
+                  <p className="text-xs text-gray-400 truncate">{nowPlaying.artistName}</p>
+                  <div className="mt-2">
+                    <ProgressBar value={(nowPlaying.progressMs / nowPlaying.durationMs) * 100} color="bg-green-500" height="h-1" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
+                  <Music2 size={18} className="text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Rien en cours</p>
+                  <button onClick={() => onNavigate('soundlog')}
+                    className="text-xs text-gray-600 hover:text-white transition-colors">
+                    Ouvrir SoundLog →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Last hike */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Mountain size={13} style={{ color: 'var(--accent)' }} />
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Dernière rando</span>
+              <button onClick={() => onNavigate('hike')}
+                className="ml-auto text-gray-600 hover:text-white transition-colors">
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            {lastHike ? (
+              <>
+                <p className="text-sm font-semibold text-white truncate">{lastHike.name}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {lastHike.daysAgo === 0 ? "Aujourd'hui 🥾"
+                    : lastHike.daysAgo === 1 ? 'Hier 🥾'
+                    : `Il y a ${lastHike.daysAgo} jours 🥾`}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Aucune rando enregistrée</p>
+            )}
+          </div>
+
+          {/* Nutrition today */}
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Apple size={13} className="text-green-400" />
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Nutrition du jour</span>
+              <button onClick={() => onNavigate('nutrition')}
+                className="ml-auto text-gray-600 hover:text-white transition-colors">
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            {todayNutrition ? (
+              <div className="space-y-2.5">
+                {[
+                  { label: 'Calories', val: todayNutrition.calories, target: targets.calories, unit: 'kcal', color: 'bg-amber-500' },
+                  { label: 'Protéines', val: todayNutrition.protein, target: targets.protein, unit: 'g', color: 'bg-blue-500' },
+                  { label: 'Eau', val: todayNutrition.water, target: targets.water, unit: 'ml', color: 'bg-cyan-500' },
+                ].map(({ label, val, target, unit, color }) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-500">{label}</span>
+                      <span className="text-gray-400">{val}/{target}{unit}</span>
+                    </div>
+                    <ProgressBar value={target > 0 ? (val / target) * 100 : 0} color={color} height="h-1" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-gray-500 mb-3">Pas encore loggé</p>
+                <button onClick={() => onNavigate('nutrition')}
+                  className="text-xs px-3 py-1.5 rounded-lg btn-accent">
+                  Logger maintenant
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pinned Hub Links */}
+        {pinnedLinks.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Globe size={15} style={{ color: 'var(--accent)' }} />
+                <h2 className="font-semibold text-white text-sm">Liens épinglés</h2>
+              </div>
+              <button onClick={() => onNavigate('hub')}
+                className="text-xs text-gray-500 hover:text-white flex items-center gap-1 transition-colors">
+                Hub <ChevronRight size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+              {pinnedLinks.map(link => (
+                <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 transition-colors group">
+                  <div className="w-10 h-10 rounded-xl bg-gray-700 flex items-center justify-center overflow-hidden">
+                    {link.favicon
+                      ? <img src={link.favicon} alt="" className="w-7 h-7 object-contain"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                      : <Globe size={18} className="text-gray-500" />}
+                  </div>
+                  <p className="text-xs text-gray-300 group-hover:text-white truncate w-full text-center transition-colors leading-tight">
+                    {link.title}
+                  </p>
+                </a>
+              ))}
             </div>
           </div>
         )}
-      </Card>
+
+        {/* Balance row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button onClick={() => onNavigate('budget')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
+              <Wallet size={18} className="text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Compte courant</p>
+              <p className="text-xl font-bold text-white">
+                €{computedBalance('cc').toLocaleString('fr-FR', { minimumFractionDigits: 0 })}
+              </p>
+            </div>
+          </button>
+          <button onClick={() => onNavigate('budget')}
+            className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 text-left transition-colors flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <PiggyBank size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Épargne</p>
+              <p className="text-xl font-bold text-white">
+                €{computedBalance('ep').toLocaleString('fr-FR', { minimumFractionDigits: 0 })}
+              </p>
+            </div>
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }

@@ -1,15 +1,21 @@
 import type { ModuleId, UserSettings } from '../types';
-import { LayoutDashboard, Calendar, Kanban, Mountain, Apple, Wallet, Music2, Settings, X } from 'lucide-react';
+import {
+  LayoutDashboard, Calendar, Kanban, Mountain, Apple, Wallet,
+  Music2, Settings, X, BookOpen, CreditCard, Link2,
+} from 'lucide-react';
 import logo from "../img/Myne.png";
 
 const NAV: { id: ModuleId; label: string; Icon: React.ElementType }[] = [
-  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'calendar',  label: 'Calendar',  Icon: Calendar },
-  { id: 'tasks',     label: 'Tasks',     Icon: Kanban },
-  { id: 'hike',      label: 'Hike',      Icon: Mountain },
-  { id: 'nutrition', label: 'Nutrition', Icon: Apple },
-  { id: 'budget',    label: 'Budget',    Icon: Wallet },
-  { id: 'soundlog',  label: 'SoundLog',  Icon: Music2 },
+  { id: 'dashboard',     label: 'Dashboard',     Icon: LayoutDashboard },
+  { id: 'calendar',      label: 'Calendar',      Icon: Calendar },
+  { id: 'tasks',         label: 'Tasks',         Icon: Kanban },
+  { id: 'hike',          label: 'Hike',          Icon: Mountain },
+  { id: 'nutrition',     label: 'Nutrition',     Icon: Apple },
+  { id: 'budget',        label: 'Budget',        Icon: Wallet },
+  { id: 'subscriptions', label: 'Abonnements',   Icon: CreditCard },
+  { id: 'study',         label: 'Study',         Icon: BookOpen },
+  { id: 'hub',           label: 'Hub',           Icon: Link2 },
+  { id: 'soundlog',      label: 'SoundLog',      Icon: Music2 },
 ];
 
 interface Props {
@@ -75,7 +81,6 @@ export default function Sidebar({ active, onNavigate, isOpen, onClose, settings 
             }`}
             style={active === 'settings' ? { backgroundColor: accent } : {}}
           >
-            {/* Avatar or initials */}
             <div className="w-[18px] h-[18px] rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-gray-700">
               {settings.avatar
                 ? <img src={settings.avatar} alt="" className="w-full h-full object-cover" />
@@ -83,7 +88,6 @@ export default function Sidebar({ active, onNavigate, isOpen, onClose, settings 
               }
             </div>
             <span className="truncate">{settings.name || 'Paramètres'}</span>
-            {!settings.avatar && !settings.name && null}
           </button>
         </div>
       </aside>

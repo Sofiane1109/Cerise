@@ -48,3 +48,25 @@ export function currentMonth(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
+
+export function addDays(dateStr: string, n: number): string {
+  const d = parseLocal(dateStr);
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+}
+
+export function addMonths(dateStr: string, n: number): string {
+  const d = parseLocal(dateStr);
+  d.setMonth(d.getMonth() + n);
+  return toDateStr(d);
+}
+
+export function addYears(dateStr: string, n: number): string {
+  const d = parseLocal(dateStr);
+  d.setFullYear(d.getFullYear() + n);
+  return toDateStr(d);
+}
+
+export function diffDays(a: string, b: string): number {
+  return Math.round((parseLocal(b).getTime() - parseLocal(a).getTime()) / 86400000);
+}

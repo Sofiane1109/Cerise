@@ -17,11 +17,11 @@ export function Card({ children, className = '', onClick }: CardProps) {
 }
 
 interface ProgressBarProps {
-  value: number;   // 0–100
+  value: number;
   color?: string;
   height?: string;
 }
-export function ProgressBar({ value, color = 'bg-indigo-500', height = 'h-2' }: ProgressBarProps) {
+export function ProgressBar({ value, color = 'bg-accent', height = 'h-2' }: ProgressBarProps) {
   const pct = Math.min(100, Math.max(0, value));
   return (
     <div className={`w-full bg-gray-800 rounded-full ${height} overflow-hidden`}>
@@ -73,8 +73,9 @@ export function Rating({ value, onChange, max = 5, labels }: RatingProps) {
           onClick={() => onChange(n)}
           title={labels ? labels[n - 1] : String(n)}
           className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
-            n <= value ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+            n <= value ? 'text-white' : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-gray-300'
           }`}
+          style={n <= value ? { backgroundColor: 'var(--accent)' } : {}}
         >
           {n}
         </button>
@@ -83,8 +84,8 @@ export function Rating({ value, onChange, max = 5, labels }: RatingProps) {
   );
 }
 
-export const INPUT = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors";
+export const INPUT = "w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors";
 export const LABEL = "block text-xs font-medium text-gray-400 mb-1";
-export const BTN_PRIMARY = "px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors";
+export const BTN_PRIMARY = "px-4 py-2 btn-accent text-sm font-medium rounded-lg";
 export const BTN_GHOST = "px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors";
 export const TOOLTIP_STYLE = { backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6', fontSize: '12px' };

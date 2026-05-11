@@ -13,8 +13,11 @@ import Tasks from './modules/Tasks';
 import Hike from './modules/Hike';
 import Nutrition from './modules/Nutrition';
 import Budget from './modules/Budget';
-import Settings  from './modules/Settings';
-import SoundLog  from './modules/SoundLog';
+import Settings from './modules/Settings';
+import SoundLog from './modules/SoundLog';
+import Study from './modules/Study';
+import Subscriptions from './modules/Subscriptions';
+import Hub from './modules/Hub';
 import { handleCallback } from './lib/spotify';
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
@@ -22,20 +25,19 @@ const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
 type AppState = 'checking' | 'login' | 'syncing' | 'ready';
 
 export default function App() {
-  const [appState, setAppState]   = useState<AppState>('checking');
-  const [session, setSession]     = useState<Session | null>(null);
-  const [active, setActive]       = useState<ModuleId>('dashboard');
+  const [appState, setAppState]     = useState<AppState>('checking');
+  const [session, setSession]       = useState<Session | null>(null);
+  const [active, setActive]         = useState<ModuleId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settings, setSettings]   = useState<UserSettings>(() =>
+  const [settings, setSettings]     = useState<UserSettings>(() =>
     getItem<UserSettings>('myne:settings', DEFAULT_SETTINGS)
   );
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
-  // Apply accent colour whenever settings change
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accentColor);
   }, [settings.accentColor]);
 
-  // Handle Spotify OAuth callback at /callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code   = params.get('code');
@@ -50,11 +52,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION on load — no need for a separate getSession() call
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (session) {
-        // Only run the heavy sync on initial load or explicit sign-in, not on every token refresh
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           handleSignedIn();
         }
@@ -62,7 +62,6 @@ export default function App() {
         setAppState('login');
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -83,10 +82,15 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  const navigateToTask = (taskId: string) => {
+    setPendingTaskId(taskId);
+    navigate('tasks');
+  };
+
   if (appState === 'checking' || appState === 'syncing') {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-3">
-        <Loader2 size={32} className="animate-spin text-indigo-500" />
+        <Loader2 size={32} className="animate-spin" style={{ color: 'var(--accent)' }} />
         <p className="text-sm text-gray-500">
           {appState === 'syncing' ? 'Synchronisation…' : 'Chargement…'}
         </p>
@@ -98,7 +102,13 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100 overflow-hidden">
-      <Sidebar active={active} onNavigate={navigate} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} settings={settings} />
+      <Sidebar
+        active={active}
+        onNavigate={navigate}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        settings={settings}
+      />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
@@ -119,14 +129,27 @@ export default function App() {
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          {active === 'dashboard' && <Dashboard onNavigate={navigate} />}
-          {active === 'calendar'  && <Calendar />}
-          {active === 'tasks'     && <Tasks />}
-          {active === 'hike'      && <Hike />}
-          {active === 'nutrition' && <Nutrition />}
-          {active === 'budget'    && <Budget />}
-          {active === 'soundlog'  && <SoundLog />}
-          {active === 'settings'  && <Settings onSettingsChange={s => setSettings(s)} />}
+          {active === 'dashboard'     && <Dashboard onNavigate={navigate} />}
+          {active === 'calendar'      && (
+            <Calendar
+              onNavigate={navigate}
+              onNavigateToTask={navigateToTask}
+            />
+          )}
+          {active === 'tasks'         && (
+            <Tasks
+              pendingTaskId={pendingTaskId}
+              onClearPending={() => setPendingTaskId(null)}
+            />
+          )}
+          {active === 'hike'          && <Hike />}
+          {active === 'nutrition'     && <Nutrition />}
+          {active === 'budget'        && <Budget />}
+          {active === 'soundlog'      && <SoundLog />}
+          {active === 'study'         && <Study />}
+          {active === 'subscriptions' && <Subscriptions />}
+          {active === 'hub'           && <Hub />}
+          {active === 'settings'      && <Settings onSettingsChange={s => setSettings(s)} />}
         </main>
       </div>
     </div>
