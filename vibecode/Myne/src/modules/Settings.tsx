@@ -1,8 +1,13 @@
 import { useState, useRef } from 'react';
 import type { UserSettings } from '../types';
 import { getItem, setItem } from '../utils/storage';
-import { Camera, Save, Palette, User } from 'lucide-react';
+import { Camera, Save, Palette, User, Lock, Settings as SettingsIcon } from 'lucide-react';
 import { INPUT, LABEL, BTN_PRIMARY } from '../components/ui';
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', avatar: undefined, accentColor: '#6366f1' };
 
@@ -28,6 +33,9 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
   );
   const [saved, setSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [newPin, setNewPin]       = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinMsg, setPinMsg]       = useState('');
 
   const update = (patch: Partial<UserSettings>) =>
     setSettings(s => {
@@ -58,12 +66,49 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleSetPin = async () => {
+    if (!/^\d{4}$/.test(newPin)) { setPinMsg('Le PIN doit être 4 chiffres'); return; }
+    if (newPin !== confirmPin)   { setPinMsg('Les PIN ne correspondent pas'); return; }
+    const hash = await sha256(newPin);
+    const next = { ...settings, budgetPin: hash };
+    setSettings(next);
+    setItem('myne:settings', next);
+    onSettingsChange(next);
+    setNewPin(''); setConfirmPin('');
+    setPinMsg(settings.budgetPin ? 'PIN modifié !' : 'PIN défini !');
+    setTimeout(() => setPinMsg(''), 3000);
+  };
+
+  const handleRemovePin = () => {
+    const { budgetPin: _removed, ...rest } = settings;
+    const next = rest as UserSettings;
+    setSettings(next);
+    setItem('myne:settings', next);
+    onSettingsChange(next);
+    setPinMsg('PIN supprimé');
+    setTimeout(() => setPinMsg(''), 3000);
+  };
+
+  const GLASS: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    borderRadius: 16,
+  };
+
   return (
-    <div className="p-6 max-w-xl mx-auto space-y-8">
-      <h1 className="text-2xl font-bold text-white">Paramètres</h1>
+    <div className="p-6 max-w-xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
+          <SettingsIcon size={18} style={{ color: 'var(--accent)' }} />
+        </div>
+        <h1 className="text-xl font-bold text-white">Paramètres</h1>
+      </div>
 
       {/* Profile */}
-      <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-5">
+      <section className="p-6 space-y-5" style={GLASS}>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
           <User size={15} /> Profil
         </h2>
@@ -118,7 +163,7 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
       </section>
 
       {/* Accent colour */}
-      <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+      <section className="p-6 space-y-4" style={GLASS}>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
           <Palette size={15} /> Accentkleur
         </h2>
@@ -147,6 +192,51 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
           />
           <span className="text-xs text-gray-600 font-mono">{settings.accentColor}</span>
         </div>
+      </section>
+
+      {/* PIN Budget */}
+      <section className="p-6 space-y-4" style={GLASS}>
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+          <Lock size={15} /> PIN Budget
+        </h2>
+        <p className="text-sm text-gray-500">
+          {settings.budgetPin
+            ? 'Un PIN est actif — changez-le ou supprimez-le.'
+            : 'Protégez le module Budget avec un code à 4 chiffres.'}
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="Nouveau PIN"
+            value={newPin}
+            onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+            className={INPUT}
+            style={{ maxWidth: 130 }}
+          />
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="Confirmer"
+            value={confirmPin}
+            onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+            className={INPUT}
+            style={{ maxWidth: 130 }}
+          />
+          <button onClick={handleSetPin} className={BTN_PRIMARY}>
+            {settings.budgetPin ? 'Changer' : 'Définir'}
+          </button>
+        </div>
+        {settings.budgetPin && (
+          <button onClick={handleRemovePin} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+            Supprimer le PIN
+          </button>
+        )}
+        {pinMsg && (
+          <p className={`text-sm ${pinMsg.includes('!') ? 'text-green-400' : 'text-red-400'}`}>{pinMsg}</p>
+        )}
       </section>
 
       {/* Save */}

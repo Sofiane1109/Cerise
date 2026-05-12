@@ -3,10 +3,13 @@ import type { StudyCourse, StudyChapter, StudyTopic, StudySession } from '../typ
 import { getItem, setItem } from '../utils/storage';
 import { uid, today } from '../utils/helpers';
 import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
+import { spotify, isConnected } from '../lib/spotify';
 import {
   BookOpen, Plus, Trash2, Check, ChevronRight, ChevronDown,
   Timer, Play, Pause, Square, RotateCcw, Pencil, X, Lock, History,
 } from 'lucide-react';
+
+const SPOTIFY_GREEN = '#1DB954';
 
 const COURSE_COLORS = ['#6366f1','#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316'];
 
@@ -60,6 +63,24 @@ export default function Study() {
   const sessionStartRef = useRef<number>(0);
 
   const [showHistory, setShowHistory] = useState(false);
+
+  // SoundLog: now playing during lock-in
+  const [nowPlaying, setNowPlaying] = useState<any>(null);
+
+  // Poll Spotify now-playing while lock-in is open
+  useEffect(() => {
+    if (!lockIn || !isConnected()) { setNowPlaying(null); return; }
+    let alive = true;
+    const poll = async () => {
+      try {
+        const d = await spotify.currentlyPlaying();
+        if (alive) setNowPlaying(d?.item ?? null);
+      } catch { if (alive) setNowPlaying(null); }
+    };
+    poll();
+    const id = setInterval(poll, 10_000);
+    return () => { alive = false; clearInterval(id); };
+  }, [lockIn]);
 
   // ── Persistence helpers ───────────────────────────────────────────────────
   const saveCourses = (list: StudyCourse[]) => { setCourses(list); setItem('myne:study:courses', list); };
@@ -204,19 +225,34 @@ export default function Study() {
   const selectedCourse = courses.find(c => c.id === selected);
   const lockCourseObj = courses.find(c => c.id === lockCourse);
 
+  const GLASS: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    borderRadius: 14,
+  };
+
+  const totalStudyMin = sessions.filter(s => s.type === 'work').reduce((a, s) => a + s.duration, 0) / 60 | 0;
+
   return (
     <div className="p-6 space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <BookOpen size={22} style={{ color: 'var(--accent)' }} /> Study Mode
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{courses.length} cours · {sessions.filter(s => s.type === 'work').reduce((a, s) => a + s.duration, 0) / 60 | 0} min d'étude</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
+            <BookOpen size={18} style={{ color: 'var(--accent)' }} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">Study Mode</h1>
+            <p className="text-gray-500 text-sm">{courses.length} cours · {totalStudyMin} min d'étude</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowHistory(h => !h)}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-300 transition-colors hover:text-white"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <History size={15} /> Historique
           </button>
           <button onClick={openAddCourse} className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${BTN_PRIMARY}`}>
@@ -229,7 +265,8 @@ export default function Study() {
         {/* Course list */}
         <div className="space-y-2">
           {courses.length === 0 ? (
-            <div className="text-center py-10 border-2 border-dashed border-gray-800 rounded-xl text-gray-600 text-sm">
+            <div className="text-center py-10 rounded-xl text-gray-600 text-sm"
+              style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
               Aucun cours · ajoutez un cours
             </div>
           ) : courses.map(c => {
@@ -238,25 +275,30 @@ export default function Study() {
             return (
               <div key={c.id}
                 onClick={() => setSelected(isSelected ? null : c.id)}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-[var(--accent)] bg-gray-900' : 'border-gray-800 bg-gray-900/50 hover:border-gray-700'}`}
+                className="p-4 cursor-pointer transition-all"
+                style={isSelected
+                  ? { ...GLASS, border: '1px solid var(--accent)', background: 'rgba(99,102,241,0.08)' }
+                  : GLASS}
               >
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                     <p className="font-semibold text-white text-sm truncate">{c.name}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={e => { e.stopPropagation(); openEditCourse(c); }} className="text-gray-600 hover:text-blue-400 transition-colors p-0.5"><Pencil size={12} /></button>
-                    <button onClick={e => { e.stopPropagation(); removeCourse(c.id); }} className="text-gray-600 hover:text-red-400 transition-colors p-0.5"><Trash2 size={12} /></button>
+                    <button onClick={e => { e.stopPropagation(); openEditCourse(c); }}
+                      className="text-gray-600 hover:text-blue-400 transition-colors p-0.5"><Pencil size={12} /></button>
+                    <button onClick={e => { e.stopPropagation(); removeCourse(c.id); }}
+                      className="text-gray-600 hover:text-red-400 transition-colors p-0.5"><Trash2 size={12} /></button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${prog}%`, backgroundColor: c.color }} />
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${prog}%`, backgroundColor: c.color, boxShadow: `0 0 6px ${c.color}80` }} />
                   </div>
                   <span className="text-xs text-gray-500 shrink-0">{prog}%</span>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">{c.chapters.length} chapitre{c.chapters.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-600">{c.chapters.length} chapitre{c.chapters.length !== 1 ? 's' : ''}</p>
               </div>
             );
           })}
@@ -265,8 +307,10 @@ export default function Study() {
           {courses.length > 0 && (
             <button
               onClick={() => { setLockCourse(selected ?? courses[0].id); setLockIn(true); }}
-              className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[var(--accent)]/40 rounded-xl text-sm font-semibold hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all"
-              style={{ color: 'var(--accent)' }}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-sm font-semibold transition-all"
+              style={{ border: '2px dashed rgba(99,102,241,0.3)', color: 'var(--accent)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'rgba(99,102,241,0.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.3)'; e.currentTarget.style.background = ''; }}
             >
               <Lock size={15} /> Lock-in Mode (Pomodoro)
             </button>
@@ -276,12 +320,13 @@ export default function Study() {
         {/* Chapter / topic editor */}
         <div className="md:col-span-2">
           {!selectedCourse ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center text-gray-600 text-sm border-2 border-dashed border-gray-800 rounded-xl">
+            <div className="flex flex-col items-center justify-center h-48 text-center text-gray-600 text-sm rounded-xl"
+              style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
               <ChevronRight size={24} className="mb-2" />
               Sélectionnez un cours pour voir les chapitres
             </div>
           ) : (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="p-5" style={GLASS}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedCourse.color }} />
@@ -302,9 +347,9 @@ export default function Study() {
                     const chProg = chapterProgress(ch);
                     const isExp = expanded.has(ch.id);
                     return (
-                      <div key={ch.id} className="border border-gray-800 rounded-lg overflow-hidden">
+                      <div key={ch.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                         {/* Chapter header */}
-                        <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/30 cursor-pointer"
+                        <div className="flex items-center gap-2 px-4 py-3 cursor-pointer" style={{ background: 'rgba(255,255,255,0.03)' }}
                           onClick={() => setExpanded(prev => { const next = new Set(prev); isExp ? next.delete(ch.id) : next.add(ch.id); return next; })}>
                           {isExp ? <ChevronDown size={14} className="text-gray-500 shrink-0" /> : <ChevronRight size={14} className="text-gray-500 shrink-0" />}
                           {editChapter?.chapter.id === ch.id ? (
@@ -378,7 +423,7 @@ export default function Study() {
 
       {/* Session history */}
       {showHistory && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="p-5" style={GLASS}>
           <h2 className="font-semibold text-white mb-4 flex items-center gap-2"><History size={16} /> Historique des sessions</h2>
           {sessions.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-4">Aucune session enregistrée</p>
@@ -387,7 +432,7 @@ export default function Study() {
               {[...sessions].reverse().slice(0, 20).map(s => {
                 const course = courses.find(c => c.id === s.courseId);
                 return (
-                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-800 text-sm">
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg text-sm" style={{ border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: course?.color ?? '#6b7280' }} />
                     <span className="text-gray-400 shrink-0">{new Date(s.date + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                     <span className="text-white flex-1">{course?.name ?? 'Cours supprimé'}</span>
@@ -446,87 +491,189 @@ export default function Study() {
       </Modal>
 
       {/* Lock-in overlay */}
-      {lockIn && (
-        <div className="fixed inset-0 bg-gray-950/95 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-          <button onClick={closeLockIn} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
-            <X size={24} />
-          </button>
+      {lockIn && (() => {
+        const phaseColor  = phase === 'break' ? '#22c55e' : phase === 'work' ? 'var(--accent)' : 'rgba(255,255,255,0.3)';
+        const totalSecs   = phase === 'work' ? workDur * 60 : breakDur * 60;
+        const progress    = phase === 'idle' ? 0 : ((totalSecs - timeLeft) / totalSecs) * 100;
+        const todaySecs   = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work').reduce((a, s) => a + s.duration, 0);
+        const todayPomos  = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work' && s.duration >= workDur * 60 * 0.8).length;
+        const ringSize    = 240;
+        const r           = (ringSize - 16) / 2;
+        const circ        = 2 * Math.PI * r;
+        const offset      = circ - (progress / 100) * circ;
+        const spotifyConnected = isConnected();
 
-          <div className="text-center space-y-6 w-full max-w-sm px-6">
-            {/* Course selector */}
-            <div className="flex justify-center">
-              <select className="bg-gray-900 border border-gray-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] transition-colors"
-                value={lockCourse ?? ''} onChange={e => setLockCourse(e.target.value)}
-                disabled={running}>
-                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col overflow-hidden" style={{ background: '#06060e' }}>
+            {/* Ambient glow */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: phase === 'work'
+                ? 'radial-gradient(ellipse 60% 40% at 50% 60%, rgba(99,102,241,0.12) 0%, transparent 70%)'
+                : phase === 'break'
+                ? 'radial-gradient(ellipse 60% 40% at 50% 60%, rgba(34,197,94,0.10) 0%, transparent 70%)'
+                : 'radial-gradient(ellipse 60% 40% at 50% 60%, rgba(255,255,255,0.03) 0%, transparent 70%)',
+              transition: 'background 0.8s ease',
+            }} />
+
+            {/* Top bar */}
+            <div className="relative flex items-center justify-between px-6 py-4">
+              <div className="flex items-center gap-3">
+                {/* Course color dot + selector */}
+                <div className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: lockCourseObj?.color ?? 'var(--accent)' }} />
+                <select
+                  value={lockCourse ?? ''}
+                  onChange={e => setLockCourse(e.target.value)}
+                  disabled={running}
+                  className="bg-transparent text-white text-sm font-semibold focus:outline-none cursor-pointer disabled:cursor-default"
+                  style={{ border: 'none' }}
+                >
+                  {courses.map(c => <option key={c.id} value={c.id} style={{ background: '#111' }}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {todaySecs > 0 && (
+                  <span className="text-xs text-gray-600 font-mono">
+                    {Math.floor(todaySecs / 60)} min · {todayPomos} 🍅
+                  </span>
+                )}
+                <button onClick={closeLockIn} className="text-gray-600 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            {/* Phase indicator */}
-            <p className="text-sm font-semibold uppercase tracking-widest" style={{ color: phase === 'idle' ? '#6b7280' : phase === 'work' ? 'var(--accent)' : '#22c55e' }}>
-              {phase === 'idle' ? 'Prêt' : phase === 'work' ? '🎯 Focus' : '☕ Pause'}
-            </p>
+            {/* Main content */}
+            <div className="relative flex-1 flex flex-col items-center justify-center gap-8 px-6">
 
-            {/* Timer display */}
-            <div className="text-8xl font-mono font-bold tracking-tight" style={{ color: phase === 'break' ? '#22c55e' : 'white' }}>
-              {phase === 'idle' ? fmtTime(workDur * 60) : fmtTime(timeLeft)}
-            </div>
+              {/* Phase label */}
+              <p className="text-xs font-bold uppercase tracking-[0.25em] transition-colors"
+                style={{ color: phaseColor }}>
+                {phase === 'idle' ? 'Prêt à démarrer' : phase === 'work' ? '⚡ Focus' : '☕ Pause'}
+              </p>
 
-            {/* Duration settings (when idle) */}
-            {phase === 'idle' && (
-              <div className="flex justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-500">Focus</label>
-                  <input type="number" min="1" max="90" value={workDur} onChange={e => setWorkDur(Number(e.target.value) || 25)}
-                    className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-center text-sm focus:outline-none" />
-                  <span className="text-gray-500">min</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-gray-500">Pause</label>
-                  <input type="number" min="1" max="30" value={breakDur} onChange={e => setBreakDur(Number(e.target.value) || 5)}
-                    className="w-14 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-center text-sm focus:outline-none" />
-                  <span className="text-gray-500">min</span>
+              {/* Circular timer */}
+              <div className="relative flex items-center justify-center" style={{ width: ringSize, height: ringSize }}>
+                <svg width={ringSize} height={ringSize} style={{ position: 'absolute', top: 0, left: 0 }}>
+                  {/* Track */}
+                  <circle cx={ringSize / 2} cy={ringSize / 2} r={r}
+                    fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={6} />
+                  {/* Progress */}
+                  <circle cx={ringSize / 2} cy={ringSize / 2} r={r}
+                    fill="none" stroke={phaseColor} strokeWidth={6}
+                    strokeDasharray={circ} strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+                    style={{ transition: 'stroke-dashoffset 0.8s linear, stroke 0.6s ease', filter: `drop-shadow(0 0 8px ${phaseColor})` }}
+                  />
+                </svg>
+                {/* Time */}
+                <div className="text-center">
+                  <p className="font-mono font-bold text-white leading-none"
+                    style={{ fontSize: 56 }}>
+                    {phase === 'idle' ? fmtTime(workDur * 60) : fmtTime(timeLeft)}
+                  </p>
+                  {phase !== 'idle' && (
+                    <p className="text-xs text-gray-600 mt-1 font-mono">
+                      / {fmtTime(totalSecs)}
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-4">
-              {phase === 'idle' ? (
-                <button onClick={() => startTimer('work')}
-                  className="flex items-center gap-2 px-8 py-3 rounded-full text-white font-semibold btn-accent">
-                  <Play size={18} /> Démarrer
-                </button>
-              ) : (
-                <>
-                  <button onClick={pauseResume}
-                    className="flex items-center gap-2 px-6 py-3 rounded-full bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors">
-                    {running ? <Pause size={18} /> : <Play size={18} />}
-                    {running ? 'Pause' : 'Reprendre'}
-                  </button>
-                  <button onClick={stopSession}
-                    className="flex items-center gap-2 px-6 py-3 rounded-full bg-red-900/40 hover:bg-red-900/60 text-red-400 font-semibold transition-colors">
-                    <Square size={18} /> Stop
-                  </button>
-                  {phase === 'work' && (
-                    <button onClick={() => { stopTimer(); setPhase('break'); setTimeLeft(breakDur * 60); }}
-                      className="flex items-center gap-2 px-4 py-3 rounded-full bg-green-900/30 hover:bg-green-900/50 text-green-400 font-semibold transition-colors">
-                      <RotateCcw size={14} /> Pause
-                    </button>
-                  )}
-                </>
+              {/* Duration settings (idle only) */}
+              {phase === 'idle' && (
+                <div className="flex gap-6 text-sm">
+                  {[{ label: 'Focus', val: workDur, set: setWorkDur, max: 90 }, { label: 'Pause', val: breakDur, set: setBreakDur, max: 30 }].map(({ label, val, set, max }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-gray-500 text-xs">{label}</span>
+                      <input type="number" min="1" max={max} value={val}
+                        onChange={e => set(Number(e.target.value) || (label === 'Focus' ? 25 : 5))}
+                        className="w-12 text-center text-sm text-white rounded-lg focus:outline-none"
+                        style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', padding: '4px 0' }} />
+                      <span className="text-gray-600 text-xs">min</span>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {/* Controls */}
+              <div className="flex items-center gap-3">
+                {phase === 'idle' ? (
+                  <button onClick={() => startTimer('work')}
+                    className="flex items-center gap-2.5 px-8 py-3.5 rounded-full text-white font-bold text-sm transition-transform hover:scale-105 active:scale-95"
+                    style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 24px var(--accent)60' }}>
+                    <Play size={18} fill="white" /> Démarrer
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={pauseResume}
+                      className="flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-sm transition-all hover:scale-105"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      {running ? <Pause size={16} /> : <Play size={16} fill="white" />}
+                      {running ? 'Pause' : 'Reprendre'}
+                    </button>
+                    {phase === 'work' && (
+                      <button onClick={() => { stopTimer(); setPhase('break'); setTimeLeft(breakDur * 60); }}
+                        className="flex items-center gap-2 px-5 py-3 rounded-full text-green-400 font-semibold text-sm transition-all hover:scale-105"
+                        style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                        <RotateCcw size={14} /> Pause
+                      </button>
+                    )}
+                    <button onClick={stopSession}
+                      className="w-11 h-11 flex items-center justify-center rounded-full text-red-400 transition-all hover:scale-105"
+                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      <Square size={15} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Recent sessions today */}
-            {sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work').length > 0 && (
-              <p className="text-xs text-gray-600">
-                {sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work').reduce((a, s) => a + s.duration, 0) / 60 | 0} min de focus aujourd'hui
-              </p>
-            )}
+            {/* Bottom — SoundLog */}
+            <div className="relative px-6 pb-6">
+              <div className="rounded-2xl p-4 flex items-center gap-3"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                {/* Spotify icon */}
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: SPOTIFY_GREEN + '20' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill={SPOTIFY_GREEN}>
+                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  </svg>
+                </div>
+
+                {!spotifyConnected ? (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500">Spotify non connecté</p>
+                    <p className="text-xs text-gray-700">Connecte Spotify dans SoundLog pour voir la musique ici</p>
+                  </div>
+                ) : nowPlaying ? (
+                  <>
+                    {nowPlaying.album?.images?.[2]?.url && (
+                      <img src={nowPlaying.album.images[2].url} alt=""
+                        className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-white truncate">{nowPlaying.name}</p>
+                      <p className="text-xs truncate" style={{ color: SPOTIFY_GREEN }}>
+                        {(nowPlaying.artists ?? []).map((a: any) => a.name).join(', ')}
+                      </p>
+                    </div>
+                    <span className="w-2 h-2 rounded-full animate-pulse shrink-0"
+                      style={{ backgroundColor: SPOTIFY_GREEN }} />
+                  </>
+                ) : (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500">Rien en cours de lecture</p>
+                    <p className="text-xs text-gray-700">Lance quelque chose sur Spotify</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

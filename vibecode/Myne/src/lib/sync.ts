@@ -14,6 +14,14 @@ const SYNC_KEYS = [
   'myne:hike:done',
   'myne:hike:gear:check',
   'myne:hike:gear:shop',
+  'myne:subscriptions',
+  'myne:hub:links',
+  'myne:hub:categories',
+  'myne:study:courses',
+  'myne:study:sessions',
+  'myne:settings',
+  'myne:calendar:categories',
+  'myne:spotify:friends',
 ];
 
 async function getUserId(): Promise<string | null> {

@@ -6,12 +6,20 @@ import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
 import { Link2, Plus, Trash2, Pencil, Star, ExternalLink, X, Globe } from 'lucide-react';
 
 const DEFAULT_CATEGORIES: HubCategory[] = [
-  { id: 'studies', name: 'Études',    emoji: '📚' },
-  { id: 'personal',name: 'Personnel', emoji: '🏠' },
-  { id: 'tools',   name: 'Outils',    emoji: '🛠️' },
-  { id: 'social',  name: 'Social',    emoji: '💬' },
-  { id: 'work',    name: 'Travail',   emoji: '💼' },
+  { id: 'studies',  name: 'Études',    emoji: '📚' },
+  { id: 'personal', name: 'Personnel', emoji: '🏠' },
+  { id: 'tools',    name: 'Outils',    emoji: '🛠️' },
+  { id: 'social',   name: 'Social',    emoji: '💬' },
+  { id: 'work',     name: 'Travail',   emoji: '💼' },
 ];
+
+const GLASS: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.07)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  borderRadius: 14,
+};
 
 function extractDomain(url: string): string {
   try { return new URL(url.startsWith('http') ? url : 'https://' + url).hostname; }
@@ -27,16 +35,13 @@ function getFaviconUrl(url: string): string {
 const EMPTY_FORM = { title: '', url: '', categoryId: '' };
 
 export default function Hub() {
-  const [userCats, setUserCats] = useState<HubCategory[]>(() => getItem('myne:hub:categories', []));
-  const [links, setLinks]       = useState<HubLink[]>(() => getItem('myne:hub:links', []));
-
-  const [modal, setModal]         = useState(false);
+  const [userCats, setUserCats]     = useState<HubCategory[]>(() => getItem('myne:hub:categories', []));
+  const [links, setLinks]           = useState<HubLink[]>(() => getItem('myne:hub:links', []));
+  const [modal, setModal]           = useState(false);
   const [editTarget, setEditTarget] = useState<HubLink | null>(null);
-  const [form, setForm]           = useState({ ...EMPTY_FORM });
-
-  const [catModal, setCatModal]   = useState(false);
-  const [catForm, setCatForm]     = useState({ name: '', emoji: '🔗' });
-
+  const [form, setForm]             = useState({ ...EMPTY_FORM });
+  const [catModal, setCatModal]     = useState(false);
+  const [catForm, setCatForm]       = useState({ name: '', emoji: '🔗' });
   const [activeCategory, setActiveCategory] = useState<string | 'all' | 'pinned'>('all');
 
   const categories = [...DEFAULT_CATEGORIES, ...userCats];
@@ -60,8 +65,7 @@ export default function Hub() {
     const url = form.url.startsWith('http') ? form.url : 'https://' + form.url;
     const link: HubLink = {
       id: editTarget?.id ?? uid(),
-      title: form.title.trim(),
-      url,
+      title: form.title.trim(), url,
       categoryId: (form.categoryId || categories[0]?.id) ?? '',
       pinned: editTarget?.pinned ?? false,
       favicon: getFaviconUrl(url) || undefined,
@@ -99,15 +103,26 @@ export default function Hub() {
     return links.filter(l => l.categoryId === activeCategory);
   }, [links, activeCategory]);
 
+  const TABS = [
+    { id: 'all',    name: 'Tous',     emoji: '🌐' },
+    { id: 'pinned', name: 'Épinglés', emoji: '⭐' },
+    ...categories,
+  ];
+
   return (
     <div className="p-6 space-y-5 max-w-6xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Link2 size={22} style={{ color: 'var(--accent)' }} /> Hub
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{links.length} liens · {links.filter(l => l.pinned).length} épinglés</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
+            <Link2 size={18} style={{ color: 'var(--accent)' }} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">Hub</h1>
+            <p className="text-gray-500 text-sm">{links.length} liens · {links.filter(l => l.pinned).length} épinglés</p>
+          </div>
         </div>
         <button onClick={openAdd} className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${BTN_PRIMARY}`}>
           <Plus size={16} /> Ajouter un lien
@@ -116,27 +131,25 @@ export default function Hub() {
 
       {/* Category tabs */}
       <div className="flex gap-2 flex-wrap items-center">
-        {[
-          { id: 'all', name: 'Tous', emoji: '🌐' },
-          { id: 'pinned', name: 'Épinglés', emoji: '⭐' },
-          ...categories,
-        ].map(cat => (
+        {TABS.map(cat => (
           <button key={cat.id} onClick={() => setActiveCategory(cat.id as any)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              activeCategory === cat.id ? 'text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
-            }`}
-            style={activeCategory === cat.id ? { backgroundColor: 'var(--accent)' } : {}}>
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
+            style={activeCategory === cat.id
+              ? { backgroundColor: 'var(--accent)', color: 'white' }
+              : { background: 'rgba(255,255,255,0.05)', color: '#9ca3af', border: '1px solid rgba(255,255,255,0.07)' }}>
             {cat.emoji} {cat.name}
           </button>
         ))}
-        <button onClick={() => setCatModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs text-gray-500 border border-dashed border-gray-700 hover:border-gray-500 transition-colors">
+        <button onClick={() => setCatModal(true)}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs text-gray-500 transition-colors hover:text-gray-300"
+          style={{ border: '1px dashed rgba(255,255,255,0.12)' }}>
           <Plus size={10} /> Catégorie
         </button>
       </div>
 
       {/* Links grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-gray-800 rounded-xl">
+        <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
           <Globe size={32} className="mx-auto text-gray-700 mb-3" />
           <p className="text-gray-500 text-sm">Aucun lien dans cette catégorie</p>
         </div>
@@ -145,34 +158,44 @@ export default function Hub() {
           {filtered.map(link => {
             const cat = categories.find(c => c.id === link.categoryId);
             return (
-              <div key={link.id} className="group bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-4 transition-all">
-                <div className="flex items-start gap-3">
-                  {/* Favicon */}
-                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center shrink-0">
+              <div key={link.id} className="group p-4 transition-all flex flex-col gap-3" style={GLASS}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)')}>
+
+                {/* Top row */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.07)' }}>
                     {link.favicon
                       ? <img src={link.favicon} alt="" className="w-6 h-6 object-contain"
                           onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                       : <Globe size={16} className="text-gray-500" />
                     }
                   </div>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-white truncate">{link.title}</p>
                     <p className="text-xs text-gray-500 truncate">{extractDomain(link.url)}</p>
-                    {cat && <span className="text-xs text-gray-600">{cat.emoji} {cat.name}</span>}
                   </div>
+                  {link.pinned && (
+                    <Star size={13} className="text-amber-400 fill-amber-400 shrink-0" />
+                  )}
                 </div>
+
+                {cat && (
+                  <span className="text-xs text-gray-600 self-start">{cat.emoji} {cat.name}</span>
+                )}
+
                 {/* Actions */}
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-800">
+                <div className="flex items-center gap-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <a href={link.url} target="_blank" rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-400 hover:text-white rounded-lg transition-colors hover:bg-white/5">
                     <ExternalLink size={11} /> Ouvrir
                   </a>
                   <button onClick={() => togglePin(link.id)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${link.pinned ? 'text-amber-400 bg-amber-400/10' : 'text-gray-600 hover:text-amber-400 hover:bg-gray-800'}`}>
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${link.pinned ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400 hover:bg-white/5'}`}>
                     <Star size={13} className={link.pinned ? 'fill-amber-400' : ''} />
                   </button>
-                  <button onClick={() => openEdit(link)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-blue-400 hover:bg-gray-800 transition-colors">
+                  <button onClick={() => openEdit(link)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-blue-400 hover:bg-white/5 transition-colors">
                     <Pencil size={13} />
                   </button>
                   <button onClick={() => remove(link.id)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-950/30 transition-colors">
@@ -185,13 +208,14 @@ export default function Hub() {
         </div>
       )}
 
-      {/* Manage categories */}
+      {/* Custom categories manager */}
       {userCats.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="p-4" style={GLASS}>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Catégories personnalisées</p>
           <div className="flex gap-2 flex-wrap">
             {userCats.map(cat => (
-              <div key={cat.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800 text-sm text-gray-300">
+              <div key={cat.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-gray-300"
+                style={{ background: 'rgba(255,255,255,0.05)' }}>
                 {cat.emoji} {cat.name}
                 <button onClick={() => removeCategory(cat.id)} className="text-gray-600 hover:text-red-400 transition-colors ml-1">
                   <X size={11} />
@@ -240,7 +264,8 @@ export default function Hub() {
             </div>
             <div className="col-span-2">
               <label className={LABEL}>Nom *</label>
-              <input className={INPUT} placeholder="ex: Références" value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+              <input className={INPUT} placeholder="ex: Références" value={catForm.name}
+                onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} autoFocus />
             </div>
           </div>
           <div className="flex gap-2 justify-end">

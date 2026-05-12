@@ -7,6 +7,7 @@ export interface UserSettings {
   name: string;
   avatar?: string;
   accentColor: string;
+  budgetPin?: string;
 }
 
 export type KanbanStatus = 'todo' | 'in_progress' | 'done';
