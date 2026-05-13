@@ -22,6 +22,8 @@ const SYNC_KEYS = [
   'myne:settings',
   'myne:calendar:categories',
   'myne:spotify:friends',
+  'myne:notes',
+  'myne:notes:categories',
 ];
 
 async function getUserId(): Promise<string | null> {

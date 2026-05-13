@@ -6,7 +6,7 @@ import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
 import { spotify, isConnected } from '../lib/spotify';
 import {
   BookOpen, Plus, Trash2, Check, ChevronRight, ChevronDown,
-  Timer, Play, Pause, Square, RotateCcw, Pencil, X, Lock, History,
+  Timer, Play, Pause, Square, RotateCcw, Pencil, X, Lock, History, NotebookPen,
 } from 'lucide-react';
 
 const SPOTIFY_GREEN = '#1DB954';
@@ -31,7 +31,11 @@ function chapterProgress(chapter: StudyChapter): number {
 
 type LockPhase = 'idle' | 'work' | 'break';
 
-export default function Study() {
+interface StudyProps {
+  onOpenCourseNotes: (courseId: string) => void;
+}
+
+export default function Study({ onOpenCourseNotes }: StudyProps) {
   const [courses, setCourses]   = useState<StudyCourse[]>(() => getItem('myne:study:courses', []));
   const [sessions, setSessions] = useState<StudySession[]>(() => getItem('myne:study:sessions', []));
   const [selected, setSelected] = useState<string | null>(null);
@@ -286,6 +290,9 @@ export default function Study() {
                     <p className="font-semibold text-white text-sm truncate">{c.name}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={e => { e.stopPropagation(); onOpenCourseNotes(c.id); }}
+                      title="Voir les notes liées"
+                      className="text-gray-600 hover:text-purple-400 transition-colors p-0.5"><NotebookPen size={12} /></button>
                     <button onClick={e => { e.stopPropagation(); openEditCourse(c); }}
                       className="text-gray-600 hover:text-blue-400 transition-colors p-0.5"><Pencil size={12} /></button>
                     <button onClick={e => { e.stopPropagation(); removeCourse(c.id); }}

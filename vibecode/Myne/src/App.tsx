@@ -18,6 +18,7 @@ import SoundLog from './modules/SoundLog';
 import Study from './modules/Study';
 import Subscriptions from './modules/Subscriptions';
 import Hub from './modules/Hub';
+import Notes from './modules/Notes';
 import { handleCallback } from './lib/spotify';
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
@@ -36,6 +37,7 @@ const MODULE_LABELS: Record<ModuleId, string> = {
   hub:           'Hub',
   soundlog:      'SoundLog',
   settings:      'Paramètres',
+  notes:         'Notes',
 };
 
 export default function App() {
@@ -47,7 +49,8 @@ export default function App() {
   const [settings, setSettings]       = useState<UserSettings>(() =>
     getItem<UserSettings>('myne:settings', DEFAULT_SETTINGS)
   );
-  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+  const [pendingTaskId, setPendingTaskId]         = useState<string | null>(null);
+  const [pendingNotesCourse, setPendingNotesCourse] = useState<string | null>(null);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', settings.accentColor);
@@ -96,6 +99,7 @@ export default function App() {
   const navigate = (id: ModuleId) => { setActive(id); setSidebarOpen(false); };
 
   const navigateToTask = (taskId: string) => { setPendingTaskId(taskId); navigate('tasks'); };
+  const navigateToCourseNotes = (courseId: string) => { setPendingNotesCourse(courseId); navigate('notes'); };
 
   if (appState === 'checking' || appState === 'syncing') {
     return (
@@ -193,10 +197,11 @@ export default function App() {
           {active === 'nutrition'     && <Nutrition />}
           {active === 'budget'        && <Budget />}
           {active === 'soundlog'      && <SoundLog />}
-          {active === 'study'         && <Study />}
+          {active === 'study'         && <Study onOpenCourseNotes={navigateToCourseNotes} />}
           {active === 'subscriptions' && <Subscriptions />}
           {active === 'hub'           && <Hub />}
           {active === 'settings'      && <Settings onSettingsChange={s => setSettings(s)} />}
+          {active === 'notes'         && <Notes initialCourseId={pendingNotesCourse} onClearCourseFilter={() => setPendingNotesCourse(null)} />}
         </main>
       </div>
     </div>

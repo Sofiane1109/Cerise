@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect } from 'react';
 import type { ModuleId, UserSettings } from '../types';
 import {
   LayoutDashboard, Calendar, Kanban, Mountain, Apple, Wallet,
-  Music2, Settings, X, BookOpen, CreditCard, Link2, ChevronLeft, ChevronRight,
+  Music2, Settings, X, BookOpen, CreditCard, Link2, ChevronLeft, ChevronRight, NotebookPen,
 } from 'lucide-react';
 import logo from "../img/Myne.png";
 
@@ -17,6 +17,7 @@ const NAV: { id: ModuleId; label: string; Icon: React.ElementType }[] = [
   { id: 'study',         label: 'Study',       Icon: BookOpen },
   { id: 'hub',           label: 'Hub',         Icon: Link2 },
   { id: 'soundlog',      label: 'SoundLog',    Icon: Music2 },
+  { id: 'notes',         label: 'Notes',       Icon: NotebookPen },
 ];
 
 interface Props {

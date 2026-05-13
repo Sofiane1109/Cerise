@@ -1,7 +1,7 @@
 export type ModuleId =
   | 'dashboard' | 'calendar' | 'tasks' | 'hike'
   | 'nutrition' | 'budget' | 'soundlog' | 'settings'
-  | 'study' | 'subscriptions' | 'hub';
+  | 'study' | 'subscriptions' | 'hub' | 'notes';
 
 export interface UserSettings {
   name: string;
@@ -173,6 +173,25 @@ export interface StudyCourse {
   name: string;
   color: string;
   chapters: StudyChapter[];
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+export interface NoteCategory {
+  id: string;
+  name: string;
+  emoji: string;
+  createdAt: string;
+}
+
+export interface Note {
+  id: string;
+  categoryId: string;
+  title: string;
+  content: string; // Tiptap JSON stringified
+  courseId?: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StudySession {
