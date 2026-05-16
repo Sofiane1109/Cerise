@@ -24,9 +24,9 @@ const PERIOD_EMOJI: Record<TimePeriod, string> = {
 
 function greetingWord(): string {
   const h = new Date().getHours();
-  if (h >= 5 && h < 12) return 'Bonjour';
-  if (h < 18) return 'Bon après-midi';
-  return 'Bonsoir';
+  if (h >= 5 && h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function getDayPct(): number {
@@ -190,7 +190,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
           <p className="text-sm text-gray-500 mb-5 flex items-center gap-2">
             <span>{PERIOD_EMOJI[period]}</span>
             <span className="capitalize">
-              {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </p>
 
@@ -204,7 +204,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
                 lineHeight: 1,
                 textShadow: `0 0 60px ${hexToRgba(accent, 0.7)}, 0 0 140px ${hexToRgba(accent, 0.25)}`,
               }}>
-                {clock.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {clock.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </div>
               <p className="text-gray-300 text-lg font-medium mt-4">
                 {greetingWord()}{userName ? `, ${userName}` : ''}{userName ? ' 👋' : ''}
@@ -213,12 +213,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
 
             <div style={{ ...GLASS, padding: '16px 20px', minWidth: 200 }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">Journée écoulée</span>
+                <span className="text-xs text-gray-500">Day elapsed</span>
                 <span className="text-xs font-bold" style={{ color: accent }}>{dayPct}%</span>
               </div>
               {bar(dayPct, accent)}
               <p className="text-xs text-gray-600 mt-1.5">
-                {23 - clock.getHours()}h {59 - clock.getMinutes()}m restantes
+                {23 - clock.getHours()}h {59 - clock.getMinutes()}m remaining
               </p>
             </div>
           </div>
@@ -233,24 +233,24 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             style={GLASS} className="p-4 text-left hover:brightness-125 transition-all hover:-translate-y-0.5">
             <div className="flex items-center gap-1.5 mb-3">
               <Calendar size={11} style={{ color: accent }} />
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Prochain évt.</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Next event</span>
             </div>
             {nextEvent ? (
               <>
                 <p className="text-sm font-bold text-white truncate">{nextEvent.title}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {nextEvent.date === todayStr ? 'Auj.' : diffDays(todayStr, nextEvent.date) === 1 ? 'Demain' : `Dans ${diffDays(todayStr, nextEvent.date)}j`}
+                  {nextEvent.date === todayStr ? 'Today' : diffDays(todayStr, nextEvent.date) === 1 ? 'Tomorrow' : `In ${diffDays(todayStr, nextEvent.date)}d`}
                   {nextEvent.time && ` · ${nextEvent.time}`}
                 </p>
               </>
-            ) : <p className="text-sm text-gray-600 mt-2">Aucun</p>}
+            ) : <p className="text-sm text-gray-600 mt-2">None</p>}
           </button>
 
           <button onClick={() => onNavigate('tasks')}
             style={GLASS} className="p-4 text-left hover:brightness-125 transition-all hover:-translate-y-0.5">
             <div className="flex items-center gap-1.5 mb-3">
               <CheckSquare size={11} style={{ color: accent }} />
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Tâches</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Tasks</span>
             </div>
             <p className="text-4xl font-black text-white leading-none"
               style={{ textShadow: overdueTasks > 0 ? '0 0 20px rgba(239,68,68,0.5)' : undefined }}>
@@ -258,8 +258,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             </p>
             <p className="text-xs mt-1">
               {overdueTasks > 0
-                ? <span className="text-red-400">{overdueTasks} en retard</span>
-                : <span className="text-gray-500">en cours</span>}
+                ? <span className="text-red-400">{overdueTasks} overdue</span>
+                : <span className="text-gray-500">pending</span>}
             </p>
           </button>
 
@@ -277,16 +277,16 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             style={GLASS} className="p-4 text-left hover:brightness-125 transition-all hover:-translate-y-0.5">
             <div className="flex items-center gap-1.5 mb-3">
               <CreditCard size={11} style={{ color: accent }} />
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Prochain abo.</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Next sub.</span>
             </div>
             {nextSubRenewal ? (
               <>
                 <p className="text-sm font-bold text-white truncate">{nextSubRenewal.sub.emoji} {nextSubRenewal.sub.name}</p>
                 <p className={`text-xs mt-1 ${nextSubRenewal.daysUntil <= 3 ? 'text-red-400' : nextSubRenewal.daysUntil <= 7 ? 'text-amber-400' : 'text-gray-500'}`}>
-                  {nextSubRenewal.daysUntil === 0 ? 'Auj.' : nextSubRenewal.daysUntil === 1 ? 'Demain' : `Dans ${nextSubRenewal.daysUntil}j`}
+                  {nextSubRenewal.daysUntil === 0 ? 'Today' : nextSubRenewal.daysUntil === 1 ? 'Tomorrow' : `In ${nextSubRenewal.daysUntil}d`}
                 </p>
               </>
-            ) : <p className="text-sm text-gray-600 mt-2">Aucun</p>}
+            ) : <p className="text-sm text-gray-600 mt-2">None</p>}
           </button>
         </div>
 
@@ -296,18 +296,18 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <CheckSquare size={14} style={{ color: accent }} />
-                <h2 className="font-semibold text-white text-sm">Tâches à faire</h2>
+                <h2 className="font-semibold text-white text-sm">Pending tasks</h2>
                 {overdueTasks > 0 && (
-                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{overdueTasks} en retard</span>
+                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{overdueTasks} overdue</span>
                 )}
               </div>
               <button onClick={() => onNavigate('tasks')}
                 className="text-xs text-gray-600 hover:text-white flex items-center gap-1 transition-colors">
-                Tout voir <ChevronRight size={12} />
+                View all <ChevronRight size={12} />
               </button>
             </div>
             {pendingTasks.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">Tout est fait ! 🎉</p>
+              <p className="text-gray-500 text-sm text-center py-8">All done! 🎉</p>
             ) : (
               <div className="space-y-2">
                 {pendingTasks.map(t => {
@@ -326,7 +326,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
                           {t.project && <span className="text-xs text-gray-600">#{t.project}</span>}
                           {t.deadline && (
                             <span className={`text-xs ${overdue ? 'text-red-400' : 'text-gray-500'}`}>
-                              {parseLocal(t.deadline).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}
+                              {parseLocal(t.deadline).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
                             </span>
                           )}
                         </div>
@@ -342,15 +342,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Calendar size={14} style={{ color: accent }} />
-                <h2 className="font-semibold text-white text-sm">Événements à venir</h2>
+                <h2 className="font-semibold text-white text-sm">Upcoming events</h2>
               </div>
               <button onClick={() => onNavigate('calendar')}
                 className="text-xs text-gray-600 hover:text-white flex items-center gap-1 transition-colors">
-                Calendrier <ChevronRight size={12} />
+                Calendar <ChevronRight size={12} />
               </button>
             </div>
             {upcomingEvents.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">Aucun événement à venir</p>
+              <p className="text-gray-500 text-sm text-center py-8">No upcoming events</p>
             ) : (
               <div className="space-y-2">
                 {upcomingEvents.map(e => {
@@ -366,14 +366,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white truncate">{e.title}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {isToday ? "Aujourd'hui" : daysUntil === 1 ? 'Demain'
-                            : parseLocal(e.date).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {isToday ? 'Today' : daysUntil === 1 ? 'Tomorrow'
+                            : parseLocal(e.date).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                           {e.time && ` · ${e.time}`}
                         </p>
                       </div>
                       {isToday && (
                         <span className="text-xs px-2 py-0.5 rounded-full text-white shrink-0"
-                          style={{ background: accent }}>Auj.</span>
+                          style={{ background: accent }}>Today</span>
                       )}
                     </div>
                   );
@@ -417,10 +417,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
                   <Music2 size={18} className="text-gray-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Rien en cours</p>
+                  <p className="text-sm text-gray-500">Nothing playing</p>
                   <button onClick={() => onNavigate('soundlog')}
                     className="text-xs text-gray-600 hover:text-white transition-colors">
-                    Ouvrir SoundLog →
+                    Open SoundLog →
                   </button>
                 </div>
               </div>
@@ -430,7 +430,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
           <div style={GLASS} className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Mountain size={12} style={{ color: accent }} />
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Dernière rando</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Last hike</span>
               <button onClick={() => onNavigate('hike')} className="ml-auto text-gray-600 hover:text-white transition-colors">
                 <ChevronRight size={13} />
               </button>
@@ -439,11 +439,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
               <>
                 <p className="text-base font-bold text-white">{lastHike.name}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {lastHike.daysAgo === 0 ? "Aujourd'hui 🥾" : lastHike.daysAgo === 1 ? 'Hier 🥾' : `Il y a ${lastHike.daysAgo}j 🥾`}
+                  {lastHike.daysAgo === 0 ? 'Today 🥾' : lastHike.daysAgo === 1 ? 'Yesterday 🥾' : `${lastHike.daysAgo}d ago 🥾`}
                 </p>
               </>
             ) : (
-              <p className="text-sm text-gray-500">Aucune rando enregistrée</p>
+              <p className="text-sm text-gray-500">No hikes recorded</p>
             )}
           </div>
 
@@ -458,9 +458,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             {todayNutrition ? (
               <div className="space-y-2.5">
                 {[
-                  { label: 'Calories',  val: todayNutrition.calories, target: targets.calories, unit: 'kcal', color: '#f59e0b' },
-                  { label: 'Protéines', val: todayNutrition.protein,  target: targets.protein,  unit: 'g',    color: '#3b82f6' },
-                  { label: 'Eau',       val: todayNutrition.water,    target: targets.water,    unit: 'ml',   color: '#06b6d4' },
+                  { label: 'Calories', val: todayNutrition.calories, target: targets.calories, unit: 'kcal', color: '#f59e0b' },
+                  { label: 'Protein',  val: todayNutrition.protein,  target: targets.protein,  unit: 'g',    color: '#3b82f6' },
+                  { label: 'Water',    val: todayNutrition.water,    target: targets.water,    unit: 'ml',   color: '#06b6d4' },
                 ].map(({ label, val, target, unit, color }) => (
                   <div key={label}>
                     <div className="flex justify-between text-xs mb-1">
@@ -473,11 +473,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
               </div>
             ) : (
               <div>
-                <p className="text-sm text-gray-500 mb-3">Pas encore loggé</p>
+                <p className="text-sm text-gray-500 mb-3">Not logged yet</p>
                 <button onClick={() => onNavigate('nutrition')}
                   className="text-xs px-3 py-1.5 rounded-lg text-white"
                   style={{ background: accent }}>
-                  Logger maintenant
+                  Log now
                 </button>
               </div>
             )}
@@ -490,7 +490,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (id: ModuleId) =
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Globe size={14} style={{ color: accent }} />
-                <h2 className="font-semibold text-white text-sm">Liens épinglés</h2>
+                <h2 className="font-semibold text-white text-sm">Pinned links</h2>
               </div>
               <button onClick={() => onNavigate('hub')}
                 className="text-xs text-gray-600 hover:text-white flex items-center gap-1 transition-colors">

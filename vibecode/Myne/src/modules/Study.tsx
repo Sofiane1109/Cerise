@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 
 const SPOTIFY_GREEN = '#1DB954';
-
 const COURSE_COLORS = ['#6366f1','#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#f97316'];
+const POMO_KEY = 'myne:study:pomodoro';
 
 function fmtTime(s: number): string {
   const m = Math.floor(s / 60), sec = s % 60;
@@ -31,6 +31,33 @@ function chapterProgress(chapter: StudyChapter): number {
 
 type LockPhase = 'idle' | 'work' | 'break';
 
+interface PomoState {
+  lockIn: boolean;
+  lockCourse: string | null;
+  phase: LockPhase;
+  workDur: number;
+  breakDur: number;
+  timeLeft: number;
+  running: boolean;
+  savedAt: number;
+}
+
+function loadPomoState(): PomoState | null {
+  try {
+    const raw = localStorage.getItem(POMO_KEY);
+    if (!raw) return null;
+    const s: PomoState = JSON.parse(raw);
+    if (!s.lockIn) return null;
+    if (s.running && s.savedAt) {
+      const elapsed = Math.floor((Date.now() - s.savedAt) / 1000);
+      const remaining = s.timeLeft - elapsed;
+      if (remaining <= 0) return { ...s, phase: 'idle', timeLeft: 0, running: false };
+      return { ...s, timeLeft: remaining, running: false };
+    }
+    return s;
+  } catch { return null; }
+}
+
 interface StudyProps {
   onOpenCourseNotes: (courseId: string) => void;
 }
@@ -47,7 +74,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
   const [courseForm, setCourseForm]   = useState({ name: '', color: COURSE_COLORS[0] });
 
   // Chapter modal
-  const [chapterModal, setChapterModal] = useState<string | null>(null); // courseId
+  const [chapterModal, setChapterModal] = useState<string | null>(null);
   const [editChapter, setEditChapter]   = useState<{ courseId: string; chapter: StudyChapter } | null>(null);
   const [chapterName, setChapterName]   = useState('');
 
@@ -55,21 +82,29 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
   const [editTopicId, setEditTopicId]   = useState<string | null>(null);
   const [newTopicName, setNewTopicName] = useState<Record<string, string>>({});
 
-  // Lock-in (Pomodoro)
-  const [lockIn, setLockIn]       = useState(false);
-  const [lockCourse, setLockCourse] = useState<string | null>(null);
-  const [phase, setPhase]           = useState<LockPhase>('idle');
-  const [workDur, setWorkDur]       = useState(25);
-  const [breakDur, setBreakDur]     = useState(5);
-  const [timeLeft, setTimeLeft]     = useState(0);
-  const [running, setRunning]       = useState(false);
+  // Lock-in (Pomodoro) — restored from localStorage
+  const [lockIn, setLockIn]         = useState<boolean>(() => loadPomoState()?.lockIn ?? false);
+  const [lockCourse, setLockCourse] = useState<string | null>(() => loadPomoState()?.lockCourse ?? null);
+  const [phase, setPhase]           = useState<LockPhase>(() => loadPomoState()?.phase ?? 'idle');
+  const [workDur, setWorkDur]       = useState<number>(() => loadPomoState()?.workDur ?? 25);
+  const [breakDur, setBreakDur]     = useState<number>(() => loadPomoState()?.breakDur ?? 5);
+  const [timeLeft, setTimeLeft]     = useState<number>(() => loadPomoState()?.timeLeft ?? 0);
+  const [running, setRunning]       = useState<boolean>(() => loadPomoState()?.running ?? false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionStartRef = useRef<number>(0);
 
   const [showHistory, setShowHistory] = useState(false);
+  const [nowPlaying, setNowPlaying]   = useState<any>(null);
 
-  // SoundLog: now playing during lock-in
-  const [nowPlaying, setNowPlaying] = useState<any>(null);
+  // Persist Pomodoro state whenever it changes
+  useEffect(() => {
+    if (!lockIn) return;
+    const state: PomoState = {
+      lockIn, lockCourse, phase, workDur, breakDur, timeLeft, running,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(POMO_KEY, JSON.stringify(state));
+  }, [lockIn, lockCourse, phase, workDur, breakDur, timeLeft, running]);
 
   // Poll Spotify now-playing while lock-in is open
   useEffect(() => {
@@ -87,11 +122,11 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
   }, [lockIn]);
 
   // ── Persistence helpers ───────────────────────────────────────────────────
-  const saveCourses = (list: StudyCourse[]) => { setCourses(list); setItem('myne:study:courses', list); };
+  const saveCourses  = (list: StudyCourse[])  => { setCourses(list);  setItem('myne:study:courses', list); };
   const saveSessions = (list: StudySession[]) => { setSessions(list); setItem('myne:study:sessions', list); };
 
   // ── Course CRUD ───────────────────────────────────────────────────────────
-  const openAddCourse = () => { setEditCourse(null); setCourseForm({ name: '', color: COURSE_COLORS[0] }); setCourseModal(true); };
+  const openAddCourse  = () => { setEditCourse(null); setCourseForm({ name: '', color: COURSE_COLORS[0] }); setCourseModal(true); };
   const openEditCourse = (c: StudyCourse) => { setEditCourse(c); setCourseForm({ name: c.name, color: c.color }); setCourseModal(true); };
 
   const submitCourse = () => {
@@ -186,7 +221,6 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
           setRunning(false);
           const dur = (phase === 'work' ? workDur : breakDur) * 60;
           if (phase === 'work' || phase === 'break') recordSession(phase, dur);
-          // auto-switch
           if (phase === 'work') {
             setPhase('break');
             setTimeLeft(breakDur * 60);
@@ -224,10 +258,11 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
     setPhase('idle');
     setLockIn(false);
     setLockCourse(null);
+    localStorage.removeItem(POMO_KEY);
   };
 
-  const selectedCourse = courses.find(c => c.id === selected);
-  const lockCourseObj = courses.find(c => c.id === lockCourse);
+  const selectedCourse  = courses.find(c => c.id === selected);
+  const lockCourseObj   = courses.find(c => c.id === lockCourse);
 
   const GLASS: React.CSSProperties = {
     background: 'rgba(255,255,255,0.03)',
@@ -250,17 +285,17 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">Study Mode</h1>
-            <p className="text-gray-500 text-sm">{courses.length} cours · {totalStudyMin} min d'étude</p>
+            <p className="text-gray-500 text-sm">{courses.length} course{courses.length !== 1 ? 's' : ''} · {totalStudyMin} min studied</p>
           </div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowHistory(h => !h)}
             className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg text-gray-300 transition-colors hover:text-white"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <History size={15} /> Historique
+            <History size={15} /> History
           </button>
           <button onClick={openAddCourse} className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${BTN_PRIMARY}`}>
-            <Plus size={16} /> Cours
+            <Plus size={16} /> Course
           </button>
         </div>
       </div>
@@ -271,7 +306,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
           {courses.length === 0 ? (
             <div className="text-center py-10 rounded-xl text-gray-600 text-sm"
               style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
-              Aucun cours · ajoutez un cours
+              No courses · add a course
             </div>
           ) : courses.map(c => {
             const prog = courseProgress(c);
@@ -291,7 +326,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={e => { e.stopPropagation(); onOpenCourseNotes(c.id); }}
-                      title="Voir les notes liées"
+                      title="View linked notes"
                       className="text-gray-600 hover:text-purple-400 transition-colors p-0.5"><NotebookPen size={12} /></button>
                     <button onClick={e => { e.stopPropagation(); openEditCourse(c); }}
                       className="text-gray-600 hover:text-blue-400 transition-colors p-0.5"><Pencil size={12} /></button>
@@ -305,7 +340,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                   </div>
                   <span className="text-xs text-gray-500 shrink-0">{prog}%</span>
                 </div>
-                <p className="text-xs text-gray-600">{c.chapters.length} chapitre{c.chapters.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-600">{c.chapters.length} chapter{c.chapters.length !== 1 ? 's' : ''}</p>
               </div>
             );
           })}
@@ -330,7 +365,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
             <div className="flex flex-col items-center justify-center h-48 text-center text-gray-600 text-sm rounded-xl"
               style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
               <ChevronRight size={24} className="mb-2" />
-              Sélectionnez un cours pour voir les chapitres
+              Select a course to view chapters
             </div>
           ) : (
             <div className="p-5" style={GLASS}>
@@ -342,17 +377,17 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                 </div>
                 <button onClick={() => setChapterModal(selectedCourse.id)}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 btn-accent rounded-lg">
-                  <Plus size={12} /> Chapitre
+                  <Plus size={12} /> Chapter
                 </button>
               </div>
 
               {selectedCourse.chapters.length === 0 ? (
-                <p className="text-gray-600 text-sm text-center py-6">Aucun chapitre · ajoutez-en un</p>
+                <p className="text-gray-600 text-sm text-center py-6">No chapters · add one</p>
               ) : (
                 <div className="space-y-3">
                   {selectedCourse.chapters.map(ch => {
                     const chProg = chapterProgress(ch);
-                    const isExp = expanded.has(ch.id);
+                    const isExp  = expanded.has(ch.id);
                     return (
                       <div key={ch.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                         {/* Chapter header */}
@@ -407,7 +442,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                             <div className="flex gap-2 mt-2">
                               <input
                                 className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[var(--accent)] transition-colors"
-                                placeholder="Ajouter un sujet..."
+                                placeholder="Add a topic..."
                                 value={newTopicName[ch.id] ?? ''}
                                 onChange={e => setNewTopicName(prev => ({ ...prev, [ch.id]: e.target.value }))}
                                 onKeyDown={e => e.key === 'Enter' && addTopic(selectedCourse.id, ch.id)}
@@ -431,9 +466,9 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
       {/* Session history */}
       {showHistory && (
         <div className="p-5" style={GLASS}>
-          <h2 className="font-semibold text-white mb-4 flex items-center gap-2"><History size={16} /> Historique des sessions</h2>
+          <h2 className="font-semibold text-white mb-4 flex items-center gap-2"><History size={16} /> Session history</h2>
           {sessions.length === 0 ? (
-            <p className="text-gray-600 text-sm text-center py-4">Aucune session enregistrée</p>
+            <p className="text-gray-600 text-sm text-center py-4">No sessions recorded</p>
           ) : (
             <div className="space-y-2">
               {[...sessions].reverse().slice(0, 20).map(s => {
@@ -441,9 +476,9 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                 return (
                   <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg text-sm" style={{ border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: course?.color ?? '#6b7280' }} />
-                    <span className="text-gray-400 shrink-0">{new Date(s.date + 'T00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                    <span className="text-white flex-1">{course?.name ?? 'Cours supprimé'}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${s.type === 'work' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>{s.type === 'work' ? 'Travail' : 'Pause'}</span>
+                    <span className="text-gray-400 shrink-0">{new Date(s.date + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-white flex-1">{course?.name ?? 'Deleted course'}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${s.type === 'work' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>{s.type === 'work' ? 'Work' : 'Break'}</span>
                     <span className="text-gray-500 shrink-0">{Math.round(s.duration / 60)} min</span>
                   </div>
                 );
@@ -454,16 +489,16 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
       )}
 
       {/* Course modal */}
-      <Modal isOpen={courseModal} onClose={() => setCourseModal(false)} title={editCourse ? 'Modifier le cours' : 'Nouveau cours'}>
+      <Modal isOpen={courseModal} onClose={() => setCourseModal(false)} title={editCourse ? 'Edit course' : 'New course'}>
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Nom *</label>
-            <input className={INPUT} placeholder="ex: Algorithmes" value={courseForm.name}
+            <label className={LABEL}>Name *</label>
+            <input className={INPUT} placeholder="e.g. Algorithms" value={courseForm.name}
               onChange={e => setCourseForm(f => ({ ...f, name: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && submitCourse()} autoFocus />
           </div>
           <div>
-            <label className={LABEL}>Couleur</label>
+            <label className={LABEL}>Color</label>
             <div className="flex gap-2 flex-wrap">
               {COURSE_COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setCourseForm(f => ({ ...f, color: c }))}
@@ -475,39 +510,39 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setCourseModal(false)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={submitCourse} className={BTN_PRIMARY}>{editCourse ? 'Sauvegarder' : 'Créer'}</button>
+            <button onClick={() => setCourseModal(false)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={submitCourse} className={BTN_PRIMARY}>{editCourse ? 'Save' : 'Create'}</button>
           </div>
         </div>
       </Modal>
 
       {/* Chapter modal */}
-      <Modal isOpen={!!chapterModal} onClose={() => setChapterModal(null)} title="Nouveau chapitre">
+      <Modal isOpen={!!chapterModal} onClose={() => setChapterModal(null)} title="New chapter">
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Nom du chapitre *</label>
-            <input className={INPUT} placeholder="ex: Chapitre 1 - Introduction" value={chapterName}
+            <label className={LABEL}>Chapter name *</label>
+            <input className={INPUT} placeholder="e.g. Chapter 1 - Introduction" value={chapterName}
               onChange={e => setChapterName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && chapterModal && addChapter(chapterModal)} autoFocus />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setChapterModal(null)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={() => chapterModal && addChapter(chapterModal)} className={BTN_PRIMARY}>Ajouter</button>
+            <button onClick={() => setChapterModal(null)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={() => chapterModal && addChapter(chapterModal)} className={BTN_PRIMARY}>Add</button>
           </div>
         </div>
       </Modal>
 
       {/* Lock-in overlay */}
       {lockIn && (() => {
-        const phaseColor  = phase === 'break' ? '#22c55e' : phase === 'work' ? 'var(--accent)' : 'rgba(255,255,255,0.3)';
-        const totalSecs   = phase === 'work' ? workDur * 60 : breakDur * 60;
-        const progress    = phase === 'idle' ? 0 : ((totalSecs - timeLeft) / totalSecs) * 100;
-        const todaySecs   = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work').reduce((a, s) => a + s.duration, 0);
-        const todayPomos  = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work' && s.duration >= workDur * 60 * 0.8).length;
-        const ringSize    = 240;
-        const r           = (ringSize - 16) / 2;
-        const circ        = 2 * Math.PI * r;
-        const offset      = circ - (progress / 100) * circ;
+        const phaseColor = phase === 'break' ? '#22c55e' : phase === 'work' ? 'var(--accent)' : 'rgba(255,255,255,0.3)';
+        const totalSecs  = phase === 'work' ? workDur * 60 : breakDur * 60;
+        const progress   = phase === 'idle' ? 0 : ((totalSecs - timeLeft) / totalSecs) * 100;
+        const todaySecs  = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work').reduce((a, s) => a + s.duration, 0);
+        const todayPomos = sessions.filter(s => s.date === today() && s.courseId === lockCourse && s.type === 'work' && s.duration >= workDur * 60 * 0.8).length;
+        const ringSize   = 240;
+        const r          = (ringSize - 16) / 2;
+        const circ       = 2 * Math.PI * r;
+        const offset     = circ - (progress / 100) * circ;
         const spotifyConnected = isConnected();
 
         return (
@@ -525,7 +560,6 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
             {/* Top bar */}
             <div className="relative flex items-center justify-between px-6 py-4">
               <div className="flex items-center gap-3">
-                {/* Course color dot + selector */}
                 <div className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: lockCourseObj?.color ?? 'var(--accent)' }} />
                 <select
@@ -557,16 +591,14 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
               {/* Phase label */}
               <p className="text-xs font-bold uppercase tracking-[0.25em] transition-colors"
                 style={{ color: phaseColor }}>
-                {phase === 'idle' ? 'Prêt à démarrer' : phase === 'work' ? '⚡ Focus' : '☕ Pause'}
+                {phase === 'idle' ? 'Ready to start' : phase === 'work' ? '⚡ Focus' : '☕ Break'}
               </p>
 
               {/* Circular timer */}
               <div className="relative flex items-center justify-center" style={{ width: ringSize, height: ringSize }}>
                 <svg width={ringSize} height={ringSize} style={{ position: 'absolute', top: 0, left: 0 }}>
-                  {/* Track */}
                   <circle cx={ringSize / 2} cy={ringSize / 2} r={r}
                     fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={6} />
-                  {/* Progress */}
                   <circle cx={ringSize / 2} cy={ringSize / 2} r={r}
                     fill="none" stroke={phaseColor} strokeWidth={6}
                     strokeDasharray={circ} strokeDashoffset={offset}
@@ -575,16 +607,12 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                     style={{ transition: 'stroke-dashoffset 0.8s linear, stroke 0.6s ease', filter: `drop-shadow(0 0 8px ${phaseColor})` }}
                   />
                 </svg>
-                {/* Time */}
                 <div className="text-center">
-                  <p className="font-mono font-bold text-white leading-none"
-                    style={{ fontSize: 56 }}>
+                  <p className="font-mono font-bold text-white leading-none" style={{ fontSize: 56 }}>
                     {phase === 'idle' ? fmtTime(workDur * 60) : fmtTime(timeLeft)}
                   </p>
                   {phase !== 'idle' && (
-                    <p className="text-xs text-gray-600 mt-1 font-mono">
-                      / {fmtTime(totalSecs)}
-                    </p>
+                    <p className="text-xs text-gray-600 mt-1 font-mono">/ {fmtTime(totalSecs)}</p>
                   )}
                 </div>
               </div>
@@ -592,7 +620,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
               {/* Duration settings (idle only) */}
               {phase === 'idle' && (
                 <div className="flex gap-6 text-sm">
-                  {[{ label: 'Focus', val: workDur, set: setWorkDur, max: 90 }, { label: 'Pause', val: breakDur, set: setBreakDur, max: 30 }].map(({ label, val, set, max }) => (
+                  {[{ label: 'Focus', val: workDur, set: setWorkDur, max: 90 }, { label: 'Break', val: breakDur, set: setBreakDur, max: 30 }].map(({ label, val, set, max }) => (
                     <div key={label} className="flex items-center gap-2">
                       <span className="text-gray-500 text-xs">{label}</span>
                       <input type="number" min="1" max={max} value={val}
@@ -611,7 +639,7 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                   <button onClick={() => startTimer('work')}
                     className="flex items-center gap-2.5 px-8 py-3.5 rounded-full text-white font-bold text-sm transition-transform hover:scale-105 active:scale-95"
                     style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 24px var(--accent)60' }}>
-                    <Play size={18} fill="white" /> Démarrer
+                    <Play size={18} fill="white" /> Start
                   </button>
                 ) : (
                   <>
@@ -619,13 +647,13 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                       className="flex items-center gap-2 px-6 py-3 rounded-full text-white font-semibold text-sm transition-all hover:scale-105"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
                       {running ? <Pause size={16} /> : <Play size={16} fill="white" />}
-                      {running ? 'Pause' : 'Reprendre'}
+                      {running ? 'Pause' : 'Resume'}
                     </button>
                     {phase === 'work' && (
                       <button onClick={() => { stopTimer(); setPhase('break'); setTimeLeft(breakDur * 60); }}
                         className="flex items-center gap-2 px-5 py-3 rounded-full text-green-400 font-semibold text-sm transition-all hover:scale-105"
                         style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                        <RotateCcw size={14} /> Pause
+                        <RotateCcw size={14} /> Break
                       </button>
                     )}
                     <button onClick={stopSession}
@@ -638,11 +666,10 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
               </div>
             </div>
 
-            {/* Bottom — SoundLog */}
+            {/* Bottom — Spotify now playing */}
             <div className="relative px-6 pb-6">
               <div className="rounded-2xl p-4 flex items-center gap-3"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                {/* Spotify icon */}
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                   style={{ backgroundColor: SPOTIFY_GREEN + '20' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill={SPOTIFY_GREEN}>
@@ -652,8 +679,8 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
 
                 {!spotifyConnected ? (
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500">Spotify non connecté</p>
-                    <p className="text-xs text-gray-700">Connecte Spotify dans SoundLog pour voir la musique ici</p>
+                    <p className="text-xs text-gray-500">Spotify not connected</p>
+                    <p className="text-xs text-gray-700">Connect Spotify in SoundLog to see music here</p>
                   </div>
                 ) : nowPlaying ? (
                   <>
@@ -672,8 +699,8 @@ export default function Study({ onOpenCourseNotes }: StudyProps) {
                   </>
                 ) : (
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500">Rien en cours de lecture</p>
-                    <p className="text-xs text-gray-700">Lance quelque chose sur Spotify</p>
+                    <p className="text-xs text-gray-500">Nothing playing</p>
+                    <p className="text-xs text-gray-700">Play something on Spotify</p>
                   </div>
                 )}
               </div>

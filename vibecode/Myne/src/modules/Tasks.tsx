@@ -6,15 +6,15 @@ import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
 import { Plus, Trash2, Clock, Tag, AlertCircle, GripVertical, Pencil } from 'lucide-react';
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; dot: string }> = {
-  high:   { label: 'Haute',   color: 'text-red-400',   dot: 'bg-red-500' },
-  medium: { label: 'Moyenne', color: 'text-amber-400', dot: 'bg-amber-500' },
-  low:    { label: 'Basse',   color: 'text-gray-400',  dot: 'bg-gray-500' },
+  high:   { label: 'High',   color: 'text-red-400',   dot: 'bg-red-500' },
+  medium: { label: 'Medium', color: 'text-amber-400', dot: 'bg-amber-500' },
+  low:    { label: 'Low',    color: 'text-gray-400',  dot: 'bg-gray-500' },
 };
 
 const COLUMNS: { status: KanbanStatus; label: string; accent: string; badge: string }[] = [
-  { status: 'todo',        label: 'À faire',  accent: 'border-t-gray-600',   badge: 'bg-gray-800 text-gray-400' },
-  { status: 'in_progress', label: 'En cours', accent: 'border-t-indigo-500', badge: 'bg-indigo-900/40 text-indigo-300' },
-  { status: 'done',        label: 'Terminé',  accent: 'border-t-green-500',  badge: 'bg-green-900/40 text-green-300' },
+  { status: 'todo',        label: 'To do',       accent: 'border-t-gray-600',   badge: 'bg-gray-800 text-gray-400' },
+  { status: 'in_progress', label: 'In progress', accent: 'border-t-indigo-500', badge: 'bg-indigo-900/40 text-indigo-300' },
+  { status: 'done',        label: 'Done',        accent: 'border-t-green-500',  badge: 'bg-green-900/40 text-green-300' },
 ];
 
 const EMPTY_FORM = { title: '', priority: 'medium' as Priority, deadline: '', project: '' };
@@ -52,15 +52,12 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
 
-  // Edit
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [editForm, setEditForm] = useState({ ...EMPTY_FORM });
 
-  // Drag
-  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragId, setDragId]       = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<KanbanStatus | null>(null);
 
-  // Touch drag
   const touchDragId = useRef<string | null>(null);
   const touchColRef = useRef<KanbanStatus | null>(null);
 
@@ -68,7 +65,6 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
 
   useEffect(() => { syncCalendar(tasks); }, []);
 
-  // Open edit modal when navigated from Calendar
   useEffect(() => {
     if (!pendingTaskId) return;
     const t = tasks.find(x => x.id === pendingTaskId);
@@ -121,10 +117,7 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
     setDropTarget(null);
   };
 
-  // Touch handlers for mobile drag
-  const handleTouchStart = (e: React.TouchEvent, id: string) => {
-    touchDragId.current = id;
-  };
+  const handleTouchStart = (e: React.TouchEvent, id: string) => { touchDragId.current = id; };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -138,9 +131,7 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
     const col = touchColRef.current;
     if (id && col) {
       const task = tasks.find(t => t.id === id);
-      if (task && task.status !== col) {
-        save(tasks.map(t => t.id === id ? { ...t, status: col } : t));
-      }
+      if (task && task.status !== col) save(tasks.map(t => t.id === id ? { ...t, status: col } : t));
     }
     touchDragId.current = null;
     touchColRef.current = null;
@@ -168,16 +159,16 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
         <div>
           <h1 className="text-xl font-bold text-white">Tasks</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {tasks.filter(t => t.status === 'todo').length} à faire ·{' '}
-            {tasks.filter(t => t.status === 'in_progress').length} en cours ·{' '}
-            {tasks.filter(t => t.status === 'done').length} terminées
+            {tasks.filter(t => t.status === 'todo').length} to do ·{' '}
+            {tasks.filter(t => t.status === 'in_progress').length} in progress ·{' '}
+            {tasks.filter(t => t.status === 'done').length} done
           </p>
         </div>
         <button
           onClick={() => setShowForm(f => !f)}
           className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${showForm ? BTN_GHOST : BTN_PRIMARY}`}
         >
-          <Plus size={16} /> Ajouter
+          <Plus size={16} /> Add
         </button>
       </div>
 
@@ -185,32 +176,32 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
       {showForm && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
           <div>
-            <label className={LABEL}>Titre *</label>
-            <input className={INPUT} placeholder="Que faut-il faire ?" value={form.title}
+            <label className={LABEL}>Title *</label>
+            <input className={INPUT} placeholder="What needs to be done?" value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && addTask()} autoFocus />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className={LABEL}>Priorité</label>
+              <label className={LABEL}>Priority</label>
               <select className={INPUT} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value as Priority }))}>
-                <option value="high">Haute</option>
-                <option value="medium">Moyenne</option>
-                <option value="low">Basse</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </div>
             <div>
-              <label className={LABEL}>Échéance (optionnel)</label>
+              <label className={LABEL}>Deadline (optional)</label>
               <input type="date" className={INPUT} value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
             </div>
             <div>
-              <label className={LABEL}>Projet (optionnel)</label>
-              <input className={INPUT} placeholder="ex: travail, perso" value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} />
+              <label className={LABEL}>Project (optional)</label>
+              <input className={INPUT} placeholder="e.g. work, personal" value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={addTask} className={BTN_PRIMARY}>Ajouter</button>
+            <button onClick={() => setShowForm(false)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={addTask} className={BTN_PRIMARY}>Add</button>
           </div>
         </div>
       )}
@@ -238,7 +229,7 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
                 <div className={`border-2 border-dashed rounded-lg py-10 text-center text-xs transition-colors ${
                   dropTarget === col.status && dragId ? 'border-[var(--accent)]/50 text-[var(--accent)]' : 'border-gray-800 text-gray-700'
                 }`}>
-                  {dropTarget === col.status && dragId ? 'Déposer ici' : 'Vide'}
+                  {dropTarget === col.status && dragId ? 'Drop here' : 'Empty'}
                 </div>
               )}
               {col.tasks.map(t => {
@@ -276,22 +267,16 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
                           {t.deadline && (
                             <span className={`inline-flex items-center gap-1 text-xs ${overdue ? 'text-red-400' : 'text-gray-500'}`}>
                               {overdue ? <AlertCircle size={9} /> : <Clock size={9} />}
-                              {parseLocal(t.deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              {parseLocal(t.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-700 hover:text-blue-400 transition-colors"
-                        >
+                        <button onClick={() => openEdit(t)} className="w-6 h-6 flex items-center justify-center rounded text-gray-700 hover:text-blue-400 transition-colors">
                           <Pencil size={11} />
                         </button>
-                        <button
-                          onClick={() => remove(t.id)}
-                          className="w-6 h-6 flex items-center justify-center rounded text-gray-700 hover:text-red-400 transition-colors"
-                        >
+                        <button onClick={() => remove(t.id)} className="w-6 h-6 flex items-center justify-center rounded text-gray-700 hover:text-red-400 transition-colors">
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -305,51 +290,51 @@ export default function Tasks({ pendingTaskId, onClearPending }: Props) {
       </div>
 
       {/* Edit modal */}
-      <Modal isOpen={!!editTask} onClose={() => setEditTask(null)} title="Modifier la tâche">
+      <Modal isOpen={!!editTask} onClose={() => setEditTask(null)} title="Edit task">
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Titre *</label>
+            <label className={LABEL}>Title *</label>
             <input className={INPUT} value={editForm.title}
               onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && submitEdit()} autoFocus />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className={LABEL}>Priorité</label>
+              <label className={LABEL}>Priority</label>
               <select className={INPUT} value={editForm.priority} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value as Priority }))}>
-                <option value="high">Haute</option>
-                <option value="medium">Moyenne</option>
-                <option value="low">Basse</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </div>
             <div>
-              <label className={LABEL}>Statut</label>
+              <label className={LABEL}>Status</label>
               <select className={INPUT} value={editTask?.status ?? 'todo'}
                 onChange={e => setEditTask(t => t ? { ...t, status: e.target.value as KanbanStatus } : t)}>
-                <option value="todo">À faire</option>
-                <option value="in_progress">En cours</option>
-                <option value="done">Terminé</option>
+                <option value="todo">To do</option>
+                <option value="in_progress">In progress</option>
+                <option value="done">Done</option>
               </select>
             </div>
             <div>
-              <label className={LABEL}>Échéance</label>
+              <label className={LABEL}>Deadline</label>
               <input type="date" className={INPUT} value={editForm.deadline}
                 onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className={LABEL}>Projet</label>
-            <input className={INPUT} placeholder="ex: travail, perso" value={editForm.project}
+            <label className={LABEL}>Project</label>
+            <input className={INPUT} placeholder="e.g. work, personal" value={editForm.project}
               onChange={e => setEditForm(f => ({ ...f, project: e.target.value }))} />
           </div>
           <div className="flex gap-3 pt-1">
             <button onClick={() => { if (editTask) remove(editTask.id); setEditTask(null); }}
               className="flex items-center gap-2 px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm rounded-lg transition-colors">
-              <Trash2 size={14} /> Supprimer
+              <Trash2 size={14} /> Delete
             </button>
             <div className="flex gap-2 ml-auto">
-              <button onClick={() => setEditTask(null)} className={BTN_GHOST}>Annuler</button>
-              <button onClick={submitEdit} className={BTN_PRIMARY}>Sauvegarder</button>
+              <button onClick={() => setEditTask(null)} className={BTN_GHOST}>Cancel</button>
+              <button onClick={submitEdit} className={BTN_PRIMARY}>Save</button>
             </div>
           </div>
         </div>

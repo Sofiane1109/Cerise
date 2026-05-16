@@ -27,16 +27,16 @@ type AppState = 'checking' | 'login' | 'syncing' | 'ready';
 
 const MODULE_LABELS: Record<ModuleId, string> = {
   dashboard:     'Dashboard',
-  calendar:      'Calendrier',
-  tasks:         'Tâches',
+  calendar:      'Calendar',
+  tasks:         'Tasks',
   hike:          'Hike',
   nutrition:     'Nutrition',
   budget:        'Budget',
-  subscriptions: 'Abonnements',
+  subscriptions: 'Subscriptions',
   study:         'Study',
   hub:           'Hub',
   soundlog:      'SoundLog',
-  settings:      'Paramètres',
+  settings:      'Settings',
   notes:         'Notes',
 };
 
@@ -106,7 +106,7 @@ export default function App() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: '#09090f' }}>
         <div className="w-8 h-8 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: 'var(--accent)', borderRightColor: 'var(--accent)40' }} />
         <p className="text-sm text-gray-500">
-          {appState === 'syncing' ? 'Synchronisation…' : 'Chargement…'}
+          {appState === 'syncing' ? 'Syncing…' : 'Loading…'}
         </p>
       </div>
     );
@@ -160,7 +160,7 @@ export default function App() {
           {/* Focus mode toggle — desktop only */}
           <button
             onClick={() => setFocusMode(f => !f)}
-            title={focusMode ? 'Quitter le focus (Échap)' : 'Mode focus'}
+            title={focusMode ? 'Exit focus (Esc)' : 'Focus mode'}
             className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               focusMode
                 ? 'text-white'
@@ -169,7 +169,7 @@ export default function App() {
             style={focusMode ? { backgroundColor: 'var(--accent)' } : {}}
           >
             {focusMode ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-            {focusMode ? 'Quitter focus' : 'Mode focus'}
+            {focusMode ? 'Exit focus' : 'Focus mode'}
           </button>
 
           <div className="hidden md:block h-4 w-px mx-1" style={{ background: 'rgba(255,255,255,0.07)' }} />
@@ -180,11 +180,11 @@ export default function App() {
           {/* Logout */}
           <button
             onClick={logout}
-            title="Se déconnecter"
+            title="Sign out"
             className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
           >
             <LogOut size={14} />
-            <span className="hidden md:inline">Déconnexion</span>
+            <span className="hidden md:inline">Sign out</span>
           </button>
         </div>
 

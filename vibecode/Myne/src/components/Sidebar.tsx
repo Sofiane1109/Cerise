@@ -145,7 +145,7 @@ export default function Sidebar({ active, onNavigate, isOpen, onClose, settings 
           {/* Settings button */}
           <button
             onClick={() => onNavigate('settings')}
-            title={collapsed ? 'Paramètres' : undefined}
+            title={collapsed ? 'Settings' : undefined}
             className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${
               collapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
             } ${
@@ -159,7 +159,7 @@ export default function Sidebar({ active, onNavigate, isOpen, onClose, settings 
                 : <Settings size={12} className="text-gray-400" />
               }
             </div>
-            {!collapsed && <span className="truncate">Paramètres</span>}
+            {!collapsed && <span className="truncate">Settings</span>}
           </button>
 
           {!collapsed && (

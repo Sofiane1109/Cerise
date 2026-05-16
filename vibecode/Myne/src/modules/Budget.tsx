@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import type { BudgetEntry, BudgetGoal, ExpenseCategory, AccountId, AccountBalances, UserSettings } from '../types';
 import { getItem, setItem } from '../utils/storage';
 import { today, uid, getLast6Months, formatMonthLabel } from '../utils/helpers';
-import { ProgressBar, Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST, TOOLTIP_STYLE } from '../components/ui';
+import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST, TOOLTIP_STYLE } from '../components/ui';
 import {
   Plus, Trash2, Wallet, Target, ChevronLeft, ChevronRight,
   Pencil, ArrowUpRight, ArrowDownRight, TrendingUp, Lock,
@@ -16,16 +16,16 @@ const CAT_COLORS: Record<ExpenseCategory, string> = {
   health:'#06b6d4', shopping:'#f97316', services:'#8b5cf6', other:'#6b7280',
 };
 const CAT_LABELS: Record<ExpenseCategory, string> = {
-  food:'Alimentation', housing:'Logement', transport:'Transport', leisure:'Loisirs',
-  health:'Santé', shopping:'Shopping', services:'Services', other:'Autre',
+  food:'Food', housing:'Housing', transport:'Transport', leisure:'Leisure',
+  health:'Health', shopping:'Shopping', services:'Services', other:'Other',
 };
 const CAT_EMOJI: Record<string, string> = {
   food:'🍔', housing:'🏠', transport:'🚌', leisure:'🎮',
   health:'💊', shopping:'🛍️', services:'⚙️', other:'📦', income:'💸',
 };
 const ACCOUNTS: { id: AccountId; label: string; sub: string }[] = [
-  { id:'cc', label:'Compte courant', sub:'Visa •••• 4291' },
-  { id:'ep', label:'Épargne',        sub:'Livret A' },
+  { id:'cc', label:'Checking', sub:'Visa •••• 4291' },
+  { id:'ep', label:'Savings',  sub:'Savings account' },
 ];
 
 // ── Time filter helpers ───────────────────────────────────────────────────────
@@ -44,10 +44,10 @@ function filterByPeriod(entries: BudgetEntry[], ref: Date, tf: TimeFilter): Budg
 
 function periodLabel(ref: Date, tf: TimeFilter): string {
   const y = ref.getFullYear(), m = ref.getMonth()+1;
-  if (tf==='month') return new Date(y,m-1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-  if (tf==='quarter') return `T${Math.floor((m-1)/3)+1} ${y}`;
+  if (tf==='month') return new Date(y,m-1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  if (tf==='quarter') return `Q${Math.floor((m-1)/3)+1} ${y}`;
   if (tf==='year') return String(y);
-  return 'Tout';
+  return 'All';
 }
 
 function shiftRef(ref: Date, tf: TimeFilter, dir: 1|-1): Date {
@@ -102,7 +102,7 @@ function PinLock({ storedHash, onUnlock }: { storedHash: string; onUnlock: () =>
           <Lock size={28} style={{ color: accent }} />
         </div>
         <h2 className="text-xl font-bold text-white mb-1">Budget</h2>
-        <p className="text-sm text-gray-500 mb-8">Entrez votre PIN</p>
+        <p className="text-sm text-gray-500 mb-8">Enter your PIN</p>
 
         <div className="flex justify-center gap-4 mb-8"
           style={shaking ? { animation: 'pin-shake 0.55s ease' } : {}}>
@@ -166,9 +166,9 @@ function BankCard({ account, balance, name, onEdit }: {
 
         {/* Balance */}
         <div className="mb-4">
-          <p className="text-white/50 text-xs mb-1">Solde actuel</p>
+          <p className="text-white/50 text-xs mb-1">Current balance</p>
           <p className={`text-4xl font-bold tracking-tight ${isNeg ? 'text-red-300' : 'text-white'}`}>
-            {isNeg ? '-' : ''}€{Math.abs(balance).toLocaleString('fr-FR',{minimumFractionDigits:2})}
+            {isNeg ? '-' : ''}€{Math.abs(balance).toLocaleString('en-GB',{minimumFractionDigits:2})}
           </p>
         </div>
 
@@ -177,7 +177,7 @@ function BankCard({ account, balance, name, onEdit }: {
           <p className="text-white/40 text-xs">{name || 'Myne User'}</p>
           <button onClick={onEdit}
             className="flex items-center gap-1.5 text-white/50 hover:text-white text-xs transition-colors bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg">
-            <Pencil size={10} /> Modifier
+            <Pencil size={10} /> Edit
           </button>
         </div>
       </div>
@@ -291,8 +291,8 @@ function BudgetContent() {
     const mes = accountEntries.filter(e=>e.date.startsWith(m));
     return {
       month: formatMonthLabel(m),
-      revenus:  mes.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0),
-      dépenses: mes.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0),
+      income:   mes.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0),
+      expenses: mes.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0),
     };
   }),[accountEntries,last6]);
 
@@ -300,8 +300,8 @@ function BudgetContent() {
   const accInfo   = ACCOUNTS.find(a=>a.id===account)!;
   const userName  = getItem<{name?:string}>('myne:settings',{}).name ?? '';
   const TF_OPTS: {value:TimeFilter; label:string}[] = [
-    {value:'month',label:'Mois'},{value:'quarter',label:'Trimestre'},
-    {value:'year',label:'Année'},{value:'all',label:'Tout'},
+    {value:'month',label:'Month'},{value:'quarter',label:'Quarter'},
+    {value:'year',label:'Year'},{value:'all',label:'All'},
   ];
 
   return (
@@ -352,11 +352,11 @@ function BudgetContent() {
               <button onClick={()=>{setGoalAmount(String(currentGoal?.savingsGoal??'')); setGoalModal(true);}}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-white/70 hover:text-white transition-colors"
                 style={{background:'rgba(255,255,255,0.12)', backdropFilter:'blur(8px)'}}>
-                <Target size={15}/> Objectif
+                <Target size={15}/> Goal
               </button>
               <button onClick={()=>setModal(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-gray-900 bg-white hover:bg-white/90 transition-colors shadow-lg">
-                <Plus size={15}/> Ajouter
+                <Plus size={15}/> Add
               </button>
             </div>
           </div>
@@ -376,23 +376,23 @@ function BudgetContent() {
             {/* Stat tiles */}
             <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <StatTile
-                label="Revenus"
-                value={`€${income.toLocaleString('fr-FR',{minimumFractionDigits:0})}`}
-                sub={`${periodEntries.filter(e=>e.type==='income').length} opération(s)`}
+                label="Income"
+                value={`€${income.toLocaleString('en-GB',{minimumFractionDigits:0})}`}
+                sub={`${periodEntries.filter(e=>e.type==='income').length} transaction(s)`}
                 gradient="bg-gradient-to-br from-emerald-600 to-emerald-800"
                 icon={<ArrowUpRight size={14} className="text-white"/>}
               />
               <StatTile
-                label="Dépenses"
-                value={`€${expenses.toLocaleString('fr-FR',{minimumFractionDigits:0})}`}
-                sub={`${periodEntries.filter(e=>e.type==='expense').length} opération(s)`}
+                label="Expenses"
+                value={`€${expenses.toLocaleString('en-GB',{minimumFractionDigits:0})}`}
+                sub={`${periodEntries.filter(e=>e.type==='expense').length} transaction(s)`}
                 gradient="bg-gradient-to-br from-rose-600 to-rose-800"
                 icon={<ArrowDownRight size={14} className="text-white"/>}
               />
               <StatTile
                 label="Net"
-                value={`${net>=0?'+':''}€${Math.abs(net).toLocaleString('fr-FR',{minimumFractionDigits:0})}`}
-                sub={net>=0 ? 'Solde positif ✓' : 'Déficitaire'}
+                value={`${net>=0?'+':''}€${Math.abs(net).toLocaleString('en-GB',{minimumFractionDigits:0})}`}
+                sub={net>=0 ? 'Positive balance ✓' : 'Deficit'}
                 gradient={net>=0 ? 'bg-gradient-to-br from-indigo-600 to-violet-700' : 'bg-gradient-to-br from-red-700 to-red-900'}
                 icon={<TrendingUp size={14} className="text-white"/>}
               />
@@ -403,7 +403,7 @@ function BudgetContent() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Target size={13} className="text-white/60"/>
-                      <span className="text-white/70 text-xs font-medium">Objectif épargne</span>
+                      <span className="text-white/70 text-xs font-medium">Savings goal</span>
                     </div>
                     <span className={`text-sm font-bold ${net>=currentGoal.savingsGoal ? 'text-emerald-300' : 'text-white'}`}>
                       €{net.toFixed(0)} / €{currentGoal.savingsGoal}
@@ -414,7 +414,7 @@ function BudgetContent() {
                     <div className="h-full rounded-full transition-all"
                       style={{width:`${Math.min(100,Math.max(0,savingsPct))}%`, background: net>=currentGoal.savingsGoal ? '#34d399' : 'rgba(255,255,255,0.7)'}}/>
                   </div>
-                  <p className="text-white/40 text-xs mt-1.5">{Math.round(Math.max(0,savingsPct))}% atteint</p>
+                  <p className="text-white/40 text-xs mt-1.5">{Math.round(Math.max(0,savingsPct))}% reached</p>
                 </div>
               )}
             </div>
@@ -452,7 +452,7 @@ function BudgetContent() {
               </button>
               <button onClick={()=>setRef(new Date())}
                 className="px-3 py-1.5 text-xs text-white font-semibold rounded-lg transition-colors border border-white/20" style={{background:'rgba(0,0,0,0.5)', backdropFilter:'blur(16px)'}}>
-                Actuel
+                Current
               </button>
             </div>
           )}
@@ -464,8 +464,8 @@ function BudgetContent() {
           <div className="lg:col-span-3 rounded-2xl p-5 border border-white/[0.06]" style={{background:'rgba(0,0,0,0.55)', backdropFilter:'blur(20px)'}}>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="font-bold text-white">Flux financier</h2>
-                <p className="text-xs text-gray-500 mt-0.5">6 derniers mois · {accInfo.label}</p>
+                <h2 className="font-bold text-white">Cash flow</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Last 6 months · {accInfo.label}</p>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={200}>
@@ -484,8 +484,8 @@ function BudgetContent() {
                 <YAxis tick={{fill:'#6b7280',fontSize:10}} axisLine={false} tickLine={false} width={40}/>
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v:number)=>[`€${v.toFixed(2)}`,'']} cursor={{stroke:'rgba(255,255,255,0.08)',strokeWidth:1}}/>
                 <Legend formatter={v=><span style={{color:'#9ca3af',fontSize:'11px'}}>{v}</span>}/>
-                <Area type="monotone" dataKey="revenus"  name="Revenus"  stroke="#22c55e" strokeWidth={2} fill="url(#gRev)"/>
-                <Area type="monotone" dataKey="dépenses" name="Dépenses" stroke="#ef4444" strokeWidth={2} fill="url(#gDep)"/>
+                <Area type="monotone" dataKey="income"   name="Income"   stroke="#22c55e" strokeWidth={2} fill="url(#gRev)"/>
+                <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gDep)"/>
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -493,8 +493,8 @@ function BudgetContent() {
           {/* Pie */}
           <div className="lg:col-span-2 rounded-2xl p-5 border border-white/[0.06]" style={{background:'rgba(0,0,0,0.55)', backdropFilter:'blur(20px)'}}>
             <div className="mb-5">
-              <h2 className="font-bold text-white">Répartition</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Dépenses par catégorie</p>
+              <h2 className="font-bold text-white">Breakdown</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Expenses by category</p>
             </div>
             {catData.length > 0 ? (
               <>
@@ -522,7 +522,7 @@ function BudgetContent() {
               </>
             ) : (
               <div className="h-40 flex items-center justify-center text-gray-600 text-sm">
-                Aucune dépense
+                No expenses
               </div>
             )}
           </div>
@@ -533,7 +533,7 @@ function BudgetContent() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
             <div>
               <h2 className="font-bold text-white">Transactions</h2>
-              <p className="text-xs text-gray-500 mt-0.5 capitalize">{periodLabel(ref,tf)} · {sorted.length} opération{sorted.length!==1?'s':''}</p>
+              <p className="text-xs text-gray-500 mt-0.5 capitalize">{periodLabel(ref,tf)} · {sorted.length} transaction{sorted.length!==1?'s':''}</p>
             </div>
           </div>
 
@@ -542,7 +542,7 @@ function BudgetContent() {
               <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center mx-auto mb-4">
                 <Wallet size={24} className="opacity-40"/>
               </div>
-              <p className="text-sm">Aucune transaction sur cette période</p>
+              <p className="text-sm">No transactions in this period</p>
             </div>
           ) : (
             <div>
@@ -551,7 +551,7 @@ function BudgetContent() {
                 const isInc   = e.type==='income';
                 const color   = isInc ? '#22c55e' : (CAT_COLORS[cat]??'#6b7280');
                 const emoji   = CAT_EMOJI[isInc?'income':cat]??'💸';
-                const catLbl  = isInc ? 'Revenu' : CAT_LABELS[cat];
+                const catLbl  = isInc ? 'Income' : CAT_LABELS[cat];
                 const label   = e.description || catLbl;
                 return (
                   <div key={e.id}
@@ -567,7 +567,7 @@ function BudgetContent() {
                       <p className="text-sm font-semibold text-white truncate">{label}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-gray-500">
-                          {new Date(e.date+'T00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}
+                          {new Date(e.date+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
                         </span>
                         <span className="text-gray-700">·</span>
                         <span className="text-xs px-1.5 py-0.5 rounded-md font-medium"
@@ -580,7 +580,7 @@ function BudgetContent() {
                     {/* Amount */}
                     <div className="text-right shrink-0">
                       <p className={`text-sm font-bold ${isInc?'text-emerald-400':'text-red-400'}`}>
-                        {isInc?'+':'-'}€{e.amount.toLocaleString('fr-FR',{minimumFractionDigits:2})}
+                        {isInc?'+':'-'}€{e.amount.toLocaleString('en-GB',{minimumFractionDigits:2})}
                       </p>
                     </div>
 
@@ -598,7 +598,7 @@ function BudgetContent() {
       </div>
 
       {/* ══ MODALS ════════════════════════════════════════════════════════════ */}
-      <Modal isOpen={modal} onClose={()=>setModal(false)} title={`Nouvelle opération · ${accInfo.label}`}>
+      <Modal isOpen={modal} onClose={()=>setModal(false)} title={`New transaction · ${accInfo.label}`}>
         <div className="space-y-4">
           <div className="flex gap-2">
             {(['expense','income'] as const).map(t=>(
@@ -607,18 +607,18 @@ function BudgetContent() {
                   form.type===t
                     ? t==='income' ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400' : 'border-red-500 bg-red-500/15 text-red-400'
                     : 'border-gray-700 bg-gray-800 text-gray-400 hover:text-white'}`}>
-                {t==='income' ? '↑ Revenu' : '↓ Dépense'}
+                {t==='income' ? '↑ Income' : '↓ Expense'}
               </button>
             ))}
           </div>
           <div>
-            <label className={LABEL}>Montant (€) *</label>
+            <label className={LABEL}>Amount (€) *</label>
             <input type="number" step="0.01" className={INPUT} placeholder="0.00"
               value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} autoFocus/>
           </div>
           {form.type==='expense' && (
             <div>
-              <label className={LABEL}>Catégorie</label>
+              <label className={LABEL}>Category</label>
               <select className={INPUT} value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value as ExpenseCategory}))}>
                 {CATEGORIES.map(c=><option key={c} value={c}>{CAT_EMOJI[c]} {CAT_LABELS[c]}</option>)}
               </select>
@@ -626,7 +626,7 @@ function BudgetContent() {
           )}
           <div>
             <label className={LABEL}>Description</label>
-            <input className={INPUT} placeholder="ex: Courses, Loyer…" value={form.description}
+            <input className={INPUT} placeholder="e.g. Groceries, Rent…" value={form.description}
               onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
           </div>
           <div>
@@ -635,38 +635,38 @@ function BudgetContent() {
               onChange={e=>setForm(f=>({...f,date:e.target.value}))}/>
           </div>
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={()=>setModal(false)} className={BTN_GHOST}>Annuler</button>
+            <button onClick={()=>setModal(false)} className={BTN_GHOST}>Cancel</button>
             <button onClick={addEntry} disabled={!form.amount||Number(form.amount)<=0}
-              className={`${BTN_PRIMARY} disabled:opacity-40`}>Ajouter</button>
+              className={`${BTN_PRIMARY} disabled:opacity-40`}>Add</button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={goalModal} onClose={()=>setGoalModal(false)} title={`Objectif · ${periodLabel(ref,tf)}`}>
+      <Modal isOpen={goalModal} onClose={()=>setGoalModal(false)} title={`Goal · ${periodLabel(ref,tf)}`}>
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Objectif épargne (€)</label>
+            <label className={LABEL}>Savings goal (€)</label>
             <input type="number" step="10" className={INPUT} placeholder="500"
               value={goalAmount} onChange={e=>setGoalAmount(e.target.value)} autoFocus/>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={()=>setGoalModal(false)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={saveGoal} className={BTN_PRIMARY}>Enregistrer</button>
+            <button onClick={()=>setGoalModal(false)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={saveGoal} className={BTN_PRIMARY}>Save</button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={balanceModal} onClose={()=>setBalanceModal(false)} title={`Modifier le solde · ${accInfo.label}`}>
+      <Modal isOpen={balanceModal} onClose={()=>setBalanceModal(false)} title={`Edit balance · ${accInfo.label}`}>
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Solde réel (€)</label>
+            <label className={LABEL}>Actual balance (€)</label>
             <input type="number" step="0.01" className={INPUT} placeholder="0.00"
               value={newBalance} onChange={e=>setNewBalance(e.target.value)} autoFocus/>
           </div>
-          <p className="text-xs text-gray-500">Ce montant recalibre la base sans modifier l'historique.</p>
+          <p className="text-xs text-gray-500">This recalibrates the baseline without modifying history.</p>
           <div className="flex gap-2 justify-end">
-            <button onClick={()=>setBalanceModal(false)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={saveBalance} className={BTN_PRIMARY}>Enregistrer</button>
+            <button onClick={()=>setBalanceModal(false)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={saveBalance} className={BTN_PRIMARY}>Save</button>
           </div>
         </div>
       </Modal>

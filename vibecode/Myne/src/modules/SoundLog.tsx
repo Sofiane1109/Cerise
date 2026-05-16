@@ -39,12 +39,12 @@ type TopSub = 'artists' | 'tracks';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SPOTIFY_GREEN = '#1DB954';
-const DAYS          = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const DAYS          = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const GENRE_COLORS  = ['#1DB954','#6366f1','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#22c55e','#ec4899','#3b82f6','#84cc16','#14b8a6','#a855f7','#f43f5e','#0ea5e9'];
 const TIME_RANGES: { key: TimeRange; label: string }[] = [
-  { key: 'short_term',  label: '4 semaines' },
-  { key: 'medium_term', label: '6 mois'      },
-  { key: 'long_term',   label: 'Tout le temps' },
+  { key: 'short_term',  label: '4 weeks'   },
+  { key: 'medium_term', label: '6 months'  },
+  { key: 'long_term',   label: 'All time'  },
 ];
 const TOOLTIP_STYLE = { backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', color: '#f3f4f6', fontSize: '12px' };
 
@@ -108,7 +108,7 @@ function ArtistCard({ artist, rank }: { artist: SpotifyArtist; rank: number }) {
       }
       <div className="min-w-0">
         <p className="text-sm text-white font-medium truncate group-hover:text-green-400 transition-colors">{artist.name}</p>
-        <p className="text-xs text-gray-500 truncate">{(artist.genres ?? []).slice(0, 2).join(', ') || 'Artiste'}</p>
+        <p className="text-xs text-gray-500 truncate">{(artist.genres ?? []).slice(0, 2).join(', ') || 'Artist'}</p>
       </div>
     </a>
   );
@@ -189,7 +189,7 @@ export default function SoundLog() {
       setTA(a?.items ?? []);
       setTT(t?.items ?? []);
     } catch (e: any) {
-      setTE(e?.message ?? 'Erreur lors du chargement');
+      setTE(e?.message ?? 'Loading error');
       if (e?.message === 'Not authenticated') { clearTokens(); setConnected(false); }
     } finally { setTL(false); }
   }, [timeRange]);
@@ -267,15 +267,15 @@ export default function SoundLog() {
     if (!code) return;
     setFL(true); setFE(null);
     try {
-      if (friends.some(f => f.shareCode === code)) { setFE('Cet ami est déjà ajouté.'); return; }
-      if (code === shareCode) { setFE('Tu ne peux pas t\'ajouter toi-même.'); return; }
+      if (friends.some(f => f.shareCode === code)) { setFE("This friend is already added."); return; }
+      if (code === shareCode) { setFE("You can't add yourself."); return; }
       const { data, error } = await supabase.from('spotify_shares').select('share_code, display_name, top_artists').eq('share_code', code).single();
-      if (error || !data) { setFE('Code introuvable. L\'ami doit d\'abord visiter l\'onglet Amis.'); return; }
+      if (error || !data) { setFE('Code not found. Your friend must visit the Friends tab first.'); return; }
       const updated = [...friends, { shareCode: data.share_code, displayName: data.display_name, topArtists: data.top_artists ?? [], addedAt: new Date().toISOString() }];
       setFriends(updated);
       setItem('myne:spotify:friends', updated);
       setFC('');
-    } catch { setFE('Erreur réseau.'); }
+    } catch { setFE('Network error.'); }
     finally { setFL(false); }
   }
 
@@ -296,7 +296,7 @@ export default function SoundLog() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-white mb-2">SoundLog</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">Connecte Spotify pour voir tes stats, genres favoris, habitudes d'écoute et la compatibilité musicale avec tes amis.</p>
+            <p className="text-gray-400 text-sm leading-relaxed">Connect Spotify to see your stats, favourite genres, listening habits and music compatibility with friends.</p>
           </div>
           <button
             onClick={() => initiateAuth()}
@@ -306,7 +306,7 @@ export default function SoundLog() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
             </svg>
-            Connecter Spotify
+            Connect Spotify
           </button>
         </div>
       </div>
@@ -320,9 +320,9 @@ export default function SoundLog() {
     if (!nowPlaying) return (
       <div className="text-center py-16 space-y-3">
         <Headphones size={40} className="mx-auto text-gray-700" />
-        <p className="text-gray-500 text-sm">Rien en cours de lecture</p>
+        <p className="text-gray-500 text-sm">Nothing playing</p>
         <button onClick={fetchNowPlaying} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors">
-          <RefreshCw size={11} /> Actualiser
+          <RefreshCw size={11} /> Refresh
         </button>
       </div>
     );
@@ -349,7 +349,7 @@ export default function SoundLog() {
           </div>
           <p className="text-xs flex items-center gap-1.5" style={{ color: SPOTIFY_GREEN }}>
             <span className="w-2 h-2 rounded-full animate-pulse inline-block" style={{ backgroundColor: SPOTIFY_GREEN }} />
-            En cours · actualise dans 10s
+            Now playing · refreshes in 10s
           </p>
         </div>
       </div>
@@ -364,7 +364,7 @@ export default function SoundLog() {
         {(['artists', 'tracks'] as TopSub[]).map(s => (
           <button key={s} onClick={() => setTopSub(s)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${topSub === s ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-            {s === 'artists' ? 'Artistes' : 'Titres'}
+            {s === 'artists' ? 'Artists' : 'Tracks'}
           </button>
         ))}
         <div className="ml-auto flex rounded-lg overflow-hidden border border-gray-800">
@@ -381,14 +381,14 @@ export default function SoundLog() {
         <div className="text-center py-12 space-y-3">
           <p className="text-red-400 text-sm">{topError}</p>
           <button onClick={fetchTop} className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
-            <RefreshCw size={11} /> Réessayer
+            <RefreshCw size={11} /> Retry
           </button>
         </div>
       ) : (topSub === 'artists' ? topArtists : topTracks).length === 0 ? (
         <div className="text-center py-12 space-y-3">
-          <p className="text-gray-500 text-sm">Aucune donnée disponible</p>
+          <p className="text-gray-500 text-sm">No data available</p>
           <button onClick={fetchTop} className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors">
-            <RefreshCw size={11} /> Actualiser
+            <RefreshCw size={11} /> Refresh
           </button>
         </div>
       ) : (
@@ -407,7 +407,7 @@ export default function SoundLog() {
   const renderGenres = () => (
     <div className="space-y-6">
       {genresLoading ? <Spinner /> : genres.length === 0
-        ? <p className="text-gray-500 text-center py-12">Aucun genre trouvé</p>
+        ? <p className="text-gray-500 text-center py-12">No genres found</p>
         : <>
             <div className="flex flex-wrap gap-2">
               {genres.map((g, i) => (
@@ -439,7 +439,7 @@ export default function SoundLog() {
     <div className="space-y-8">
       {habitsLoading ? <Spinner /> : <>
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2"><Clock size={14} /> Par heure de la journée</h3>
+          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2"><Clock size={14} /> By hour of day</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourData} barSize={9}>
@@ -452,7 +452,7 @@ export default function SoundLog() {
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2"><BarChart2 size={14} /> Par jour de la semaine</h3>
+          <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2"><BarChart2 size={14} /> By day of week</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dayData} barSize={28}>
@@ -474,22 +474,22 @@ export default function SoundLog() {
     <div className="space-y-5">
       {/* Share code */}
       <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-2">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Ton code de partage</p>
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Your share code</p>
         <div className="flex items-center gap-3">
           <span className="text-2xl font-bold tracking-widest font-mono" style={{ color: SPOTIFY_GREEN }}>{shareCode}</span>
           <button onClick={() => { navigator.clipboard.writeText(shareCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
             className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white transition-colors px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700">
-            {copied ? <><Check size={11} /> Copié</> : <><Copy size={11} /> Copier</>}
+            {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
           </button>
         </div>
-        <p className="text-xs text-gray-600">Partage ce code avec tes amis pour voir votre compatibilité musicale</p>
+        <p className="text-xs text-gray-600">Share this code with your friends to see your music compatibility</p>
       </div>
 
       {/* Add friend */}
       <div className="flex gap-2">
         <input
           className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors font-mono tracking-widest uppercase"
-          placeholder="CODE AMI"
+          placeholder="FRIEND CODE"
           value={friendCode}
           onChange={e => setFC(e.target.value.toUpperCase())}
           onKeyDown={e => e.key === 'Enter' && addFriend()}
@@ -498,14 +498,14 @@ export default function SoundLog() {
         <button onClick={addFriend} disabled={friendLoading || !friendCode.trim()}
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-black disabled:opacity-40 transition-colors"
           style={{ backgroundColor: SPOTIFY_GREEN }}>
-          <UserPlus size={14} /> Ajouter
+          <UserPlus size={14} /> Add
         </button>
       </div>
       {friendError && <p className="text-xs text-red-400">{friendError}</p>}
 
       {/* Friends list */}
       {friends.length === 0
-        ? <p className="text-gray-600 text-sm text-center py-8">Aucun ami ajouté · partage ton code !</p>
+        ? <p className="text-gray-600 text-sm text-center py-8">No friends added · share your code!</p>
         : friends.map(friend => {
             const compat       = computeCompatibility(myTopNames, friend.topArtists.map(a => a.name));
             const shared       = friend.topArtists.filter(a => myTopNames.map(n => n.toLowerCase()).includes(a.name.toLowerCase()));
@@ -521,14 +521,14 @@ export default function SoundLog() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-2xl font-bold" style={{ color: compatColor }}>{compat}%</p>
-                      <p className="text-xs text-gray-500">compatible</p>
+                      <p className="text-xs text-gray-500">match</p>
                     </div>
                     <button onClick={() => removeFriend(friend.shareCode)} className="text-gray-700 hover:text-red-400 transition-colors mt-1"><X size={14} /></button>
                   </div>
                 </div>
                 {shared.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-600 mb-1.5">En commun</p>
+                    <p className="text-xs text-gray-600 mb-1.5">In common</p>
                     <div className="flex flex-wrap gap-1.5">
                       {shared.map(a => (
                         <span key={a.name} className="flex items-center gap-1.5 text-xs bg-gray-800 px-2 py-1 rounded-lg text-gray-300">
@@ -541,7 +541,7 @@ export default function SoundLog() {
                 )}
                 {discover.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-600 mb-1.5">À découvrir grâce à {friend.displayName}</p>
+                    <p className="text-xs text-gray-600 mb-1.5">Discover through {friend.displayName}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {discover.map(a => (
                         <span key={a.name} className="flex items-center gap-1.5 text-xs border border-dashed border-gray-700 px-2 py-1 rounded-lg text-gray-500">
@@ -562,11 +562,11 @@ export default function SoundLog() {
   // ── Layout ───────────────────────────────────────────────────────────────────
 
   const TABS: { key: Tab; label: string; Icon: React.ElementType }[] = [
-    { key: 'playing', label: 'En cours',   Icon: Play      },
-    { key: 'top',     label: 'Top',         Icon: BarChart2 },
-    { key: 'genres',  label: 'Genres',      Icon: Music2    },
-    { key: 'habits',  label: 'Habitudes',   Icon: Clock     },
-    { key: 'friends', label: 'Amis',        Icon: Users     },
+    { key: 'playing', label: 'Playing', Icon: Play      },
+    { key: 'top',     label: 'Top',     Icon: BarChart2 },
+    { key: 'genres',  label: 'Genres',  Icon: Music2    },
+    { key: 'habits',  label: 'Habits',  Icon: Clock     },
+    { key: 'friends', label: 'Friends', Icon: Users     },
   ];
 
   return (
@@ -582,7 +582,7 @@ export default function SoundLog() {
           onClick={() => { clearTokens(); setConnected(false); }}
           className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
         >
-          Déconnecter Spotify
+          Disconnect Spotify
         </button>
       </div>
 

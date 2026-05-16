@@ -20,7 +20,7 @@ import {
   Heading1, Heading2, Heading3, List, ListOrdered, ListChecks,
   Code, Code2, Minus, Image as ImageIcon, Table as TableIcon,
   Undo2, Redo2, Pin, PinOff, Trash2, Plus, Search, X,
-  ChevronRight, NotebookPen, BookOpen, Pencil, Check,
+  NotebookPen, BookOpen, Pencil, Check,
 } from 'lucide-react';
 
 const lowlight = createLowlight(common);
@@ -35,10 +35,10 @@ const GLASS: React.CSSProperties = {
 };
 
 const DEFAULT_CATEGORIES: NoteCategory[] = [
-  { id: 'cours',   name: 'Cours',    emoji: '📚', createdAt: '' },
-  { id: 'projets', name: 'Projets',  emoji: '🚀', createdAt: '' },
-  { id: 'perso',   name: 'Perso',    emoji: '🏠', createdAt: '' },
-  { id: 'ideas',   name: 'Idées',    emoji: '💡', createdAt: '' },
+  { id: 'cours',   name: 'Classes',  emoji: '📚', createdAt: '' },
+  { id: 'projets', name: 'Projects', emoji: '🚀', createdAt: '' },
+  { id: 'perso',   name: 'Personal', emoji: '🏠', createdAt: '' },
+  { id: 'ideas',   name: 'Ideas',    emoji: '💡', createdAt: '' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -59,11 +59,11 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 60_000) return 'À l\'instant';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}min`;
+  if (diff < 60_000) return 'Just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}j`;
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d`;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 // ── Toolbar button ────────────────────────────────────────────────────────────
@@ -108,78 +108,70 @@ function Toolbar({ editor, onImageUrl }: { editor: any; onImageUrl: () => void }
       className="flex flex-wrap items-center gap-0.5 px-3 py-2 shrink-0"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
     >
-      {/* Undo / Redo */}
-      <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Annuler">
+      <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">
         <Undo2 size={13} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Refaire">
+      <TBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo">
         <Redo2 size={13} />
       </TBtn>
       <TSep />
 
-      {/* Headings */}
-      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Titre 1">
+      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
         <Heading1 size={14} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Titre 2">
+      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
         <Heading2 size={14} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Titre 3">
+      <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">
         <Heading3 size={14} />
       </TBtn>
       <TSep />
 
-      {/* Inline formatting */}
-      <TBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Gras (Ctrl+B)">
+      <TBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)">
         <Bold size={13} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italique (Ctrl+I)">
+      <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (Ctrl+I)">
         <Italic size={13} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Souligné (Ctrl+U)">
+      <TBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (Ctrl+U)">
         <UnderlineIcon size={13} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Barré">
+      <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
         <Strikethrough size={13} />
       </TBtn>
       <TSep />
 
-      {/* Lists */}
-      <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Liste à puces">
+      <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
         <List size={14} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Liste numérotée">
+      <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list">
         <ListOrdered size={14} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Liste de tâches">
+      <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Task list">
         <ListChecks size={14} />
       </TBtn>
       <TSep />
 
-      {/* Code */}
-      <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Code inline">
+      <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code">
         <Code size={13} />
       </TBtn>
-      <TBtn onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Bloc de code">
+      <TBtn onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">
         <Code2 size={13} />
       </TBtn>
       <TSep />
 
-      {/* Table */}
       <TBtn
         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        title="Insérer un tableau"
+        title="Insert table"
       >
         <TableIcon size={13} />
       </TBtn>
 
-      {/* Image URL */}
-      <TBtn onClick={onImageUrl} title="Insérer une image (URL)">
+      <TBtn onClick={onImageUrl} title="Insert image (URL)">
         <ImageIcon size={13} />
       </TBtn>
 
-      {/* Divider */}
-      <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Séparateur">
+      <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider">
         <Minus size={13} />
       </TBtn>
     </div>
@@ -208,7 +200,6 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
   const [search, setSearch]           = useState('');
   const [courseFilter, setCourseFilter] = useState<string | null>(initialCourseId ?? null);
 
-  // Sync course filter when prop changes (user navigates from Study again)
   useEffect(() => {
     if (initialCourseId) setCourseFilter(initialCourseId);
   }, [initialCourseId]);
@@ -219,6 +210,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
   const [newCatEmoji, setNewCatEmoji] = useState('📝');
   const [renamingCat, setRenamingCat] = useState<string | null>(null);
   const [renameName, setRenameName]   = useState('');
+  const [renameEmoji, setRenameEmoji] = useState('');
 
   // Note title editing
   const [titleDraft, setTitleDraft]   = useState('');
@@ -236,8 +228,6 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
   const saveNotes = (list: Note[]) => { setNotes(list); setItem('myne:notes', list); };
 
   // ── Filtered notes ───────────────────────────────────────────────────────────
-
-  const allCats: NoteCategory[] = categories;
 
   const filtered = (() => {
     let list = notes;
@@ -271,7 +261,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
       TaskItem.configure({ nested: true }),
       CodeBlockLowlight.configure({ lowlight }),
       Image.configure({ allowBase64: true }),
-      Placeholder.configure({ placeholder: 'Commence à écrire…' }),
+      Placeholder.configure({ placeholder: 'Start writing…' }),
       Table.configure({ resizable: false }),
       TableRow,
       TableHeader,
@@ -321,7 +311,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
       ? (categories[0]?.id ?? 'perso')
       : activeCat;
     const note: Note = {
-      id, categoryId: catId, title: 'Nouvelle note',
+      id, categoryId: catId, title: 'New note',
       content: JSON.stringify({ type: 'doc', content: [] }),
       pinned: false, createdAt: now, updatedAt: now,
     };
@@ -366,15 +356,17 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
 
   const renameCategory = (id: string) => {
     if (!renameName.trim()) return;
-    saveCats(categories.map(c => c.id === id ? { ...c, name: renameName.trim() } : c));
+    saveCats(categories.map(c => c.id === id
+      ? { ...c, name: renameName.trim(), emoji: renameEmoji || c.emoji }
+      : c
+    ));
     setRenamingCat(null);
   };
 
   const deleteCategory = (id: string) => {
-    saveCats(categories.filter(c => c.id !== id));
-    if (activeCat === id) setActiveCat('all');
-    // Move notes to first remaining category
     const remaining = categories.filter(c => c.id !== id);
+    saveCats(remaining);
+    if (activeCat === id) setActiveCat('all');
     if (remaining.length) {
       saveNotes(notes.map(n => n.categoryId === id ? { ...n, categoryId: remaining[0].id } : n));
     }
@@ -401,12 +393,12 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
         className="flex flex-col shrink-0 py-4"
         style={{ width: 200, borderRight: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 px-4 mb-3">Carnets</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 px-4 mb-3">Notebooks</p>
 
         {/* All / Pinned */}
         {[
-          { id: 'all',    label: 'Toutes',    emoji: '🗂️', count: notes.length },
-          { id: 'pinned', label: 'Épinglées', emoji: '⭐', count: notes.filter(n => n.pinned).length },
+          { id: 'all',    label: 'All',    emoji: '🗂️', count: notes.length },
+          { id: 'pinned', label: 'Pinned', emoji: '⭐', count: notes.filter(n => n.pinned).length },
         ].map(({ id, label, emoji, count }) => (
           <button key={id} onClick={() => setActiveCat(id)}
             className="flex items-center gap-2 px-4 py-2 text-sm transition-all"
@@ -423,18 +415,30 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
 
         {/* User categories */}
         <div className="flex-1 overflow-y-auto space-y-0.5">
-          {allCats.map(cat => (
-            <div key={cat.id} className="group relative flex items-center">
+          {categories.map(cat => (
+            <div key={cat.id} className="group flex items-center">
               {renamingCat === cat.id ? (
-                <input
-                  autoFocus
-                  value={renameName}
-                  onChange={e => setRenameName(e.target.value)}
-                  onBlur={() => renameCategory(cat.id)}
-                  onKeyDown={e => { if (e.key === 'Enter') renameCategory(cat.id); if (e.key === 'Escape') setRenamingCat(null); }}
-                  className="flex-1 mx-2 px-2 py-1 text-sm text-white rounded focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--accent)' }}
-                />
+                // Rename mode — emoji + name fields side by side
+                <div className="flex items-center gap-1 mx-2 flex-1 py-0.5">
+                  <input
+                    value={renameEmoji}
+                    onChange={e => setRenameEmoji(e.target.value)}
+                    className="w-8 text-center text-sm rounded focus:outline-none shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', padding: '3px' }}
+                  />
+                  <input
+                    autoFocus
+                    value={renameName}
+                    onChange={e => setRenameName(e.target.value)}
+                    onBlur={() => renameCategory(cat.id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') renameCategory(cat.id);
+                      if (e.key === 'Escape') setRenamingCat(null);
+                    }}
+                    className="flex-1 px-2 py-1 text-sm text-white rounded focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--accent)' }}
+                  />
+                </div>
               ) : (
                 <button
                   onClick={() => setActiveCat(cat.id)}
@@ -444,22 +448,29 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                     : { color: '#9ca3af' }}>
                   <span>{cat.emoji}</span>
                   <span className="flex-1 text-left truncate">{cat.name}</span>
-                  <span className="text-xs text-gray-700">{notes.filter(n => n.categoryId === cat.id).length}</span>
+                  {/* Count hides on hover so action buttons don't overlap */}
+                  <span className="text-xs text-gray-700 group-hover:hidden">{notes.filter(n => n.categoryId === cat.id).length}</span>
                 </button>
               )}
-              {/* Hover actions */}
-              <div className="absolute right-2 hidden group-hover:flex items-center gap-0.5">
-                <button onClick={() => { setRenamingCat(cat.id); setRenameName(cat.name); }}
-                  className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-blue-400 transition-colors">
-                  <Pencil size={10} />
-                </button>
-                {!DEFAULT_CATEGORIES.some(d => d.id === cat.id) && (
-                  <button onClick={() => deleteCategory(cat.id)}
-                    className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-red-400 transition-colors">
+              {/* Action buttons — normal flow (no absolute), appear on hover */}
+              {renamingCat !== cat.id && (
+                <div className="hidden group-hover:flex items-center gap-0.5 pr-2 shrink-0">
+                  <button
+                    onClick={() => { setRenamingCat(cat.id); setRenameName(cat.name); setRenameEmoji(cat.emoji); }}
+                    className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-blue-400 transition-colors"
+                    title="Rename"
+                  >
+                    <Pencil size={10} />
+                  </button>
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-red-400 transition-colors"
+                    title="Delete notebook"
+                  >
                     <X size={10} />
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -472,20 +483,20 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                 className="w-10 text-center text-sm rounded focus:outline-none"
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', padding: '4px' }} />
               <input autoFocus value={newCatName} onChange={e => setNewCatName(e.target.value)}
-                placeholder="Nom…"
+                placeholder="Name…"
                 onKeyDown={e => { if (e.key === 'Enter') addCategory(); if (e.key === 'Escape') setNewCatOpen(false); }}
                 className="flex-1 text-sm text-white rounded px-2 focus:outline-none"
                 style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
             </div>
             <div className="flex gap-1">
-              <button onClick={addCategory} className="flex-1 py-1 text-xs rounded text-white" style={{ backgroundColor: 'var(--accent)' }}>Créer</button>
-              <button onClick={() => setNewCatOpen(false)} className="flex-1 py-1 text-xs rounded text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Annuler</button>
+              <button onClick={addCategory} className="flex-1 py-1 text-xs rounded text-white" style={{ backgroundColor: 'var(--accent)' }}>Create</button>
+              <button onClick={() => setNewCatOpen(false)} className="flex-1 py-1 text-xs rounded text-gray-400" style={{ background: 'rgba(255,255,255,0.06)' }}>Cancel</button>
             </div>
           </div>
         ) : (
           <button onClick={() => setNewCatOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:text-gray-400 transition-colors">
-            <Plus size={11} /> Nouveau carnet
+            <Plus size={11} /> New notebook
           </button>
         )}
       </div>
@@ -512,12 +523,13 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
               </div>
             ) : null;
           })()}
+
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <Search size={13} className="text-gray-600 shrink-0" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher…"
+              placeholder="Search…"
               className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none"
               disabled={!!courseFilter}
             />
@@ -526,7 +538,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
           <button onClick={createNote}
             className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white transition-all"
             style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 12px var(--accent)40' }}>
-            <Plus size={13} /> Nouvelle note
+            <Plus size={13} /> New note
           </button>
         </div>
 
@@ -535,7 +547,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-700 text-xs text-center px-4">
               <NotebookPen size={24} className="mb-2 opacity-30" />
-              {search ? 'Aucun résultat' : 'Aucune note · crée-en une !'}
+              {search ? 'No results' : 'No notes · create one!'}
             </div>
           ) : filtered.map(note => {
             const cat = categories.find(c => c.id === note.categoryId);
@@ -550,10 +562,10 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                   ? { background: 'rgba(99,102,241,0.1)', borderLeft: '2px solid var(--accent)' }
                   : { borderLeft: '2px solid transparent' }}>
                 <div className="flex items-start justify-between gap-1 mb-1">
-                  <p className="text-sm font-semibold text-white truncate flex-1 pr-2">{note.title || 'Sans titre'}</p>
+                  <p className="text-sm font-semibold text-white truncate flex-1 pr-2">{note.title || 'Untitled'}</p>
                   {note.pinned && <Pin size={10} className="text-amber-400 shrink-0 mt-0.5" />}
                 </div>
-                <p className="text-xs text-gray-600 truncate mb-1.5">{preview || 'Note vide…'}</p>
+                <p className="text-xs text-gray-600 truncate mb-1.5">{preview || 'Empty note…'}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] text-gray-700">{fmtDate(note.updatedAt)}</span>
                   {cat && <span className="text-[10px] text-gray-600">{cat.emoji} {cat.name}</span>}
@@ -587,13 +599,13 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
           <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-700 gap-3">
             <NotebookPen size={40} className="opacity-20" />
             <div>
-              <p className="text-sm font-medium">Sélectionne une note</p>
-              <p className="text-xs mt-1">ou crée-en une nouvelle</p>
+              <p className="text-sm font-medium">Select a note</p>
+              <p className="text-xs mt-1">or create a new one</p>
             </div>
             <button onClick={createNote}
               className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm text-white"
               style={{ backgroundColor: 'var(--accent)' }}>
-              <Plus size={14} /> Nouvelle note
+              <Plus size={14} /> New note
             </button>
           </div>
         ) : (
@@ -608,7 +620,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                 onChange={e => setTitleDraft(e.target.value)}
                 onBlur={saveTitle}
                 onKeyDown={e => e.key === 'Enter' && (e.currentTarget.blur())}
-                placeholder="Titre de la note"
+                placeholder="Note title"
                 className="flex-1 min-w-0 bg-transparent text-lg font-bold text-white placeholder-gray-600 focus:outline-none"
               />
 
@@ -629,7 +641,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                   onChange={e => saveCourse(e.target.value)}
                   className="text-xs rounded-lg px-2 py-1 text-gray-400 focus:outline-none cursor-pointer"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <option value="" style={{ background: '#111' }}>Aucun cours</option>
+                  <option value="" style={{ background: '#111' }}>No course</option>
                   {courses.map(c => <option key={c.id} value={c.id} style={{ background: '#111' }}>{c.name}</option>)}
                 </select>
                 {linkedCourse && (
@@ -642,7 +654,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                 className="flex items-center gap-1 text-xs transition-colors"
                 style={{ color: selectedNote.pinned ? '#fbbf24' : '#6b7280' }}>
                 {selectedNote.pinned ? <Pin size={12} /> : <PinOff size={12} />}
-                {selectedNote.pinned ? 'Épinglée' : 'Épingler'}
+                {selectedNote.pinned ? 'Pinned' : 'Pin'}
               </button>
 
               <span className="text-xs text-gray-700 shrink-0">{fmtDate(selectedNote.updatedAt)}</span>
@@ -659,7 +671,7 @@ export default function Notes({ initialCourseId, onClearCourseFilter }: NotesPro
                   autoFocus
                   value={imgUrl}
                   onChange={e => setImgUrl(e.target.value)}
-                  placeholder="https://... URL de l'image"
+                  placeholder="https://... image URL"
                   onKeyDown={e => { if (e.key === 'Enter') insertImage(); if (e.key === 'Escape') setImgPrompt(false); }}
                   className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 focus:outline-none"
                 />

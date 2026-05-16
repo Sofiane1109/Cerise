@@ -14,16 +14,15 @@ const DEFAULT_SETTINGS: UserSettings = { name: '', avatar: undefined, accentColo
 const ACCENT_PRESETS = [
   { name: 'Indigo',  color: '#6366f1' },
   { name: 'Violet',  color: '#8b5cf6' },
-  { name: 'Blauw',   color: '#3b82f6' },
-  { name: 'Groen',   color: '#22c55e' },
+  { name: 'Blue',    color: '#3b82f6' },
+  { name: 'Green',   color: '#22c55e' },
   { name: 'Rose',    color: '#f43f5e' },
-  { name: 'Oranje',  color: '#f97316' },
+  { name: 'Orange',  color: '#f97316' },
   { name: 'Amber',   color: '#f59e0b' },
-  { name: 'Cyaan',   color: '#06b6d4' },
+  { name: 'Cyan',    color: '#06b6d4' },
 ];
 
 function applyAccent(color: string) {
-  // darken by ~15% for hover state
   document.documentElement.style.setProperty('--accent', color);
 }
 
@@ -33,9 +32,12 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
   );
   const [saved, setSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [newPin, setNewPin]       = useState('');
+
+  // PIN states
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin]         = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [pinMsg, setPinMsg]       = useState('');
+  const [pinMsg, setPinMsg]         = useState('');
 
   const update = (patch: Partial<UserSettings>) =>
     setSettings(s => {
@@ -67,25 +69,40 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
   };
 
   const handleSetPin = async () => {
-    if (!/^\d{4}$/.test(newPin)) { setPinMsg('Le PIN doit être 4 chiffres'); return; }
-    if (newPin !== confirmPin)   { setPinMsg('Les PIN ne correspondent pas'); return; }
+    if (!/^\d{4}$/.test(newPin)) { setPinMsg('PIN must be 4 digits'); return; }
+    if (newPin !== confirmPin)   { setPinMsg('PINs do not match'); return; }
+
+    // If a PIN already exists, require the current PIN first
+    if (settings.budgetPin) {
+      if (!/^\d{4}$/.test(currentPin)) { setPinMsg('Enter your current 4-digit PIN'); return; }
+      const currentHash = await sha256(currentPin);
+      if (currentHash !== settings.budgetPin) { setPinMsg('Current PIN is incorrect'); return; }
+    }
+
     const hash = await sha256(newPin);
     const next = { ...settings, budgetPin: hash };
     setSettings(next);
     setItem('myne:settings', next);
     onSettingsChange(next);
-    setNewPin(''); setConfirmPin('');
-    setPinMsg(settings.budgetPin ? 'PIN modifié !' : 'PIN défini !');
+    setCurrentPin(''); setNewPin(''); setConfirmPin('');
+    setPinMsg(settings.budgetPin ? 'PIN changed!' : 'PIN set!');
     setTimeout(() => setPinMsg(''), 3000);
   };
 
-  const handleRemovePin = () => {
+  const handleRemovePin = async () => {
+    // Require current PIN to remove
+    if (settings.budgetPin) {
+      if (!/^\d{4}$/.test(currentPin)) { setPinMsg('Enter your current PIN to remove it'); return; }
+      const currentHash = await sha256(currentPin);
+      if (currentHash !== settings.budgetPin) { setPinMsg('Current PIN is incorrect'); return; }
+    }
     const { budgetPin: _removed, ...rest } = settings;
     const next = rest as UserSettings;
     setSettings(next);
     setItem('myne:settings', next);
     onSettingsChange(next);
-    setPinMsg('PIN supprimé');
+    setCurrentPin('');
+    setPinMsg('PIN removed');
     setTimeout(() => setPinMsg(''), 3000);
   };
 
@@ -104,13 +121,13 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
           style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
           <SettingsIcon size={18} style={{ color: 'var(--accent)' }} />
         </div>
-        <h1 className="text-xl font-bold text-white">Paramètres</h1>
+        <h1 className="text-xl font-bold text-white">Settings</h1>
       </div>
 
       {/* Profile */}
       <section className="p-6 space-y-5" style={GLASS}>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-          <User size={15} /> Profil
+          <User size={15} /> Profile
         </h2>
 
         {/* Avatar */}
@@ -137,13 +154,13 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-gray-500 mb-1">Klik op de foto om te wijzigen</p>
+            <p className="text-xs text-gray-500 mb-1">Click to change photo</p>
             {settings.avatar && (
               <button
                 onClick={() => update({ avatar: undefined })}
                 className="text-xs text-red-400 hover:text-red-300 transition-colors"
               >
-                Foto verwijderen
+                Remove photo
               </button>
             )}
           </div>
@@ -151,21 +168,21 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
 
         {/* Name */}
         <div>
-          <label className={LABEL}>Jouw naam</label>
+          <label className={LABEL}>Your name</label>
           <input
             className={INPUT}
-            placeholder="bv. Sofiane"
+            placeholder="e.g. Sofiane"
             value={settings.name}
             onChange={e => update({ name: e.target.value })}
           />
-          <p className="text-xs text-gray-600 mt-1">Wordt gebruikt in de begroeting op het dashboard</p>
+          <p className="text-xs text-gray-600 mt-1">Used in the greeting on the dashboard</p>
         </div>
       </section>
 
       {/* Accent colour */}
       <section className="p-6 space-y-4" style={GLASS}>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-          <Palette size={15} /> Accentkleur
+          <Palette size={15} /> Accent color
         </h2>
         <div className="flex flex-wrap gap-3">
           {ACCENT_PRESETS.map(p => (
@@ -183,7 +200,7 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
           ))}
         </div>
         <div className="flex items-center gap-3 pt-1">
-          <label className="text-xs text-gray-400">Aangepaste kleur</label>
+          <label className="text-xs text-gray-400">Custom color</label>
           <input
             type="color"
             value={settings.accentColor}
@@ -197,41 +214,68 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
       {/* PIN Budget */}
       <section className="p-6 space-y-4" style={GLASS}>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-          <Lock size={15} /> PIN Budget
+          <Lock size={15} /> Budget PIN
         </h2>
         <p className="text-sm text-gray-500">
           {settings.budgetPin
-            ? 'Un PIN est actif — changez-le ou supprimez-le.'
-            : 'Protégez le module Budget avec un code à 4 chiffres.'}
+            ? 'A PIN is active — enter your current PIN to change or remove it.'
+            : 'Protect the Budget module with a 4-digit PIN.'}
         </p>
-        <div className="flex flex-wrap gap-2 items-center">
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="Nouveau PIN"
-            value={newPin}
-            onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
-            className={INPUT}
-            style={{ maxWidth: 130 }}
-          />
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="Confirmer"
-            value={confirmPin}
-            onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-            className={INPUT}
-            style={{ maxWidth: 130 }}
-          />
-          <button onClick={handleSetPin} className={BTN_PRIMARY}>
-            {settings.budgetPin ? 'Changer' : 'Définir'}
-          </button>
+
+        <div className="space-y-2">
+          {/* Current PIN — only shown when a PIN already exists */}
+          {settings.budgetPin && (
+            <div>
+              <label className={LABEL}>Current PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="Current 4-digit PIN"
+                value={currentPin}
+                onChange={e => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                className={INPUT}
+                style={{ maxWidth: 200 }}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 items-end">
+            <div>
+              <label className={LABEL}>New PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="New PIN"
+                value={newPin}
+                onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+                className={INPUT}
+                style={{ maxWidth: 130 }}
+              />
+            </div>
+            <div>
+              <label className={LABEL}>Confirm</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="Confirm PIN"
+                value={confirmPin}
+                onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                className={INPUT}
+                style={{ maxWidth: 130 }}
+              />
+            </div>
+            <button onClick={handleSetPin} className={BTN_PRIMARY}>
+              {settings.budgetPin ? 'Change' : 'Set PIN'}
+            </button>
+          </div>
         </div>
+
         {settings.budgetPin && (
           <button onClick={handleRemovePin} className="text-xs text-red-400 hover:text-red-300 transition-colors">
-            Supprimer le PIN
+            Remove PIN
           </button>
         )}
         {pinMsg && (
@@ -243,9 +287,9 @@ export default function Settings({ onSettingsChange }: { onSettingsChange: (s: U
       <div className="flex items-center gap-3">
         <button onClick={save} className={BTN_PRIMARY + ' flex items-center gap-2'}>
           <Save size={15} />
-          Opslaan
+          Save
         </button>
-        {saved && <span className="text-sm text-green-400">Opgeslagen!</span>}
+        {saved && <span className="text-sm text-green-400">Saved!</span>}
       </div>
     </div>
   );

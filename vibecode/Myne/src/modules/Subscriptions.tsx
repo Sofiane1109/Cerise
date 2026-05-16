@@ -6,10 +6,10 @@ import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
 import { CreditCard, Plus, Trash2, Pencil, RefreshCw, TrendingDown } from 'lucide-react';
 
 const FREQ_LABELS: Record<SubFrequency, string> = {
-  monthly:     'Mensuel',
-  every4weeks: 'Toutes les 4 semaines',
-  yearly:      'Annuel',
-  custom:      'Personnalisé',
+  monthly:     'Monthly',
+  every4weeks: 'Every 4 weeks',
+  yearly:      'Yearly',
+  custom:      'Custom',
 };
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
@@ -130,12 +130,12 @@ export default function Subscriptions() {
             <CreditCard size={18} style={{ color: 'var(--accent)' }} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Abonnements</h1>
-            <p className="text-gray-500 text-sm">{subs.length} abonnement{subs.length !== 1 ? 's' : ''} actif{subs.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-xl font-bold text-white">Subscriptions</h1>
+            <p className="text-gray-500 text-sm">{subs.length} active subscription{subs.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <button onClick={openAdd} className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg ${BTN_PRIMARY}`}>
-          <Plus size={16} /> Ajouter
+          <Plus size={16} /> Add
         </button>
       </div>
 
@@ -148,17 +148,16 @@ export default function Subscriptions() {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown size={15} className="text-red-400" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Coût mensuel</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Monthly cost</p>
               </div>
               <p className="text-5xl font-bold text-white tracking-tight leading-none">
-                {totalMonthly.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {totalMonthly.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-2xl text-gray-500 ml-2">€</span>
               </p>
               <p className="text-sm text-gray-600 mt-2">
-                ≈ {(totalMonthly * 12).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € par an
+                ≈ {(totalMonthly * 12).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} € per year
               </p>
             </div>
-            {/* Mini color breakdown */}
             <div className="flex gap-1.5 items-end pb-1">
               {sorted.slice(0, 6).map(s => (
                 <div key={s.id} title={s.name}
@@ -177,7 +176,7 @@ export default function Subscriptions() {
       {subs.length === 0 ? (
         <div className="text-center py-16 rounded-2xl" style={{ border: '2px dashed rgba(255,255,255,0.06)' }}>
           <CreditCard size={32} className="mx-auto text-gray-700 mb-3" />
-          <p className="text-gray-500 text-sm">Aucun abonnement · ajoutez Netflix, Spotify...</p>
+          <p className="text-gray-500 text-sm">No subscriptions · add Netflix, Spotify...</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -189,39 +188,30 @@ export default function Subscriptions() {
             return (
               <div key={sub.id} className="flex items-center gap-4 transition-all group"
                 style={{ ...GLASS, padding: '16px 20px' }}>
-                {/* Colored left accent */}
                 <div className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: color }} />
-
-                {/* Icon */}
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
                   style={{ backgroundColor: color + '20' }}>
                   {sub.emoji || '💳'}
                 </div>
-
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-white">{sub.name}</p>
                   <p className="text-sm text-gray-500 mt-0.5">
                     {sym}{sub.amount} · {FREQ_LABELS[sub.frequency]}
-                    {sub.frequency === 'custom' && sub.customDays && ` (${sub.customDays}j)`}
+                    {sub.frequency === 'custom' && sub.customDays && ` (${sub.customDays}d)`}
                   </p>
                 </div>
-
-                {/* Next renewal */}
                 <div className="text-right shrink-0">
                   <div className="flex items-center gap-1.5 justify-end">
                     <RefreshCw size={11} className={urgent ? 'text-red-400' : soon ? 'text-amber-400' : 'text-gray-600'} />
                     <p className={`text-sm font-bold ${urgent ? 'text-red-400' : soon ? 'text-amber-400' : 'text-white'}`}>
-                      {sub.daysUntil === 0 ? "Aujourd'hui" : sub.daysUntil === 1 ? 'Demain' : `Dans ${sub.daysUntil}j`}
+                      {sub.daysUntil === 0 ? 'Today' : sub.daysUntil === 1 ? 'Tomorrow' : `In ${sub.daysUntil}d`}
                     </p>
                   </div>
                   <p className="text-xs text-gray-600 mt-0.5">
-                    {parseLocal(sub.nextRenewal).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    {parseLocal(sub.nextRenewal).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </p>
-                  <p className="text-xs text-gray-600">≈ {getMonthlyAmount(sub).toFixed(2)}{sym}/mois</p>
+                  <p className="text-xs text-gray-600">≈ {getMonthlyAmount(sub).toFixed(2)}{sym}/mo</p>
                 </div>
-
-                {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   <button onClick={() => openEdit(sub)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-blue-400 hover:bg-white/5 transition-colors">
                     <Pencil size={14} />
@@ -237,7 +227,7 @@ export default function Subscriptions() {
       )}
 
       {/* Add/Edit modal */}
-      <Modal isOpen={modal} onClose={() => setModal(false)} title={editTarget ? "Modifier l'abonnement" : 'Nouvel abonnement'}>
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editTarget ? 'Edit subscription' : 'New subscription'}>
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-3">
             <div>
@@ -245,25 +235,25 @@ export default function Subscriptions() {
               <input className={INPUT} placeholder="🎵" value={form.emoji} onChange={e => setForm(f => ({ ...f, emoji: e.target.value }))} />
             </div>
             <div className="col-span-3">
-              <label className={LABEL}>Nom *</label>
-              <input className={INPUT} placeholder="ex: Spotify, Netflix..." value={form.name}
+              <label className={LABEL}>Name *</label>
+              <input className={INPUT} placeholder="e.g. Spotify, Netflix..." value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className={LABEL}>Montant *</label>
+              <label className={LABEL}>Amount *</label>
               <input type="number" step="0.01" className={INPUT} placeholder="9.99" value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
-              <label className={LABEL}>Devise</label>
+              <label className={LABEL}>Currency</label>
               <select className={INPUT} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value as typeof CURRENCIES[number] }))}>
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className={LABEL}>Fréquence</label>
+              <label className={LABEL}>Frequency</label>
               <select className={INPUT} value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value as SubFrequency }))}>
                 {(Object.entries(FREQ_LABELS) as [SubFrequency, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
@@ -271,18 +261,18 @@ export default function Subscriptions() {
           </div>
           {form.frequency === 'custom' && (
             <div>
-              <label className={LABEL}>Tous les X jours</label>
+              <label className={LABEL}>Every X days</label>
               <input type="number" className={INPUT} placeholder="30" value={form.customDays}
                 onChange={e => setForm(f => ({ ...f, customDays: e.target.value }))} />
             </div>
           )}
           <div>
-            <label className={LABEL}>Date de référence (premier paiement)</label>
+            <label className={LABEL}>Reference date (first payment)</label>
             <input type="date" className={INPUT} value={form.startDate}
               onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
           </div>
           <div>
-            <label className={LABEL}>Couleur</label>
+            <label className={LABEL}>Color</label>
             <div className="flex gap-2 flex-wrap">
               {COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
@@ -294,9 +284,9 @@ export default function Subscriptions() {
             </div>
           </div>
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={() => setModal(false)} className={BTN_GHOST}>Annuler</button>
+            <button onClick={() => setModal(false)} className={BTN_GHOST}>Cancel</button>
             <button onClick={submit} disabled={!form.name.trim() || !form.amount} className={`${BTN_PRIMARY} disabled:opacity-40`}>
-              {editTarget ? 'Sauvegarder' : 'Ajouter'}
+              {editTarget ? 'Save' : 'Add'}
             </button>
           </div>
         </div>

@@ -3,26 +3,26 @@ import type { CalendarEvent, ModuleId, EventCategory } from '../types';
 import { getItem, setItem } from '../utils/storage';
 import { today, toDateStr, parseLocal, uid } from '../utils/helpers';
 import { Modal, INPUT, LABEL, BTN_PRIMARY, BTN_GHOST } from '../components/ui';
-import { ChevronLeft, ChevronRight, Plus, Bell, Pencil, Trash2, RefreshCw, GraduationCap, MapPin, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Bell, Pencil, Trash2, RefreshCw, GraduationCap, MapPin, Check, AlertTriangle } from 'lucide-react';
 
 // ── School calendar ───────────────────────────────────────────────────────────
 const SCHOOL_COLOR = '#f97316';
 const ICAL_URL = 'https://cloud.timeedit.net/be_kuleuven/web/public/s.ics?i=6u1u8X55Z015QZ55QX27XQZ485055Y840Q486y5w501Y095570451425145X5650X54175525X0X9222900656X55X5456650223110X76158509X55X2542654505X015X5X40X504550255464521145255n9706551X2620123ZXQ5609';
 const CORS_PROXIES = [
-  'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?',
-  'https://thingproxy.freeboard.io/fetch/',
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.org/?url=',
 ];
 
 // ── Event categories ──────────────────────────────────────────────────────────
 export const DEFAULT_CATEGORIES: EventCategory[] = [
-  { id: 'personal', name: 'Personnel',  color: '#6366f1', emoji: '🏠' },
-  { id: 'school',   name: 'Cours',      color: '#3b82f6', emoji: '📚' },
-  { id: 'work',     name: 'Travail',    color: '#8b5cf6', emoji: '💼' },
-  { id: 'sport',    name: 'Sport',      color: '#22c55e', emoji: '🏃' },
-  { id: 'social',   name: 'Social',     color: '#ec4899', emoji: '🎉' },
-  { id: 'health',   name: 'Santé',      color: '#f59e0b', emoji: '🏥' },
-  { id: 'travel',   name: 'Voyage',     color: '#06b6d4', emoji: '✈️' },
+  { id: 'personal', name: 'Personal',  color: '#6366f1', emoji: '🏠' },
+  { id: 'school',   name: 'Class',     color: '#3b82f6', emoji: '📚' },
+  { id: 'work',     name: 'Work',      color: '#8b5cf6', emoji: '💼' },
+  { id: 'sport',    name: 'Sport',     color: '#22c55e', emoji: '🏃' },
+  { id: 'social',   name: 'Social',    color: '#ec4899', emoji: '🎉' },
+  { id: 'health',   name: 'Health',    color: '#f59e0b', emoji: '🏥' },
+  { id: 'travel',   name: 'Travel',    color: '#06b6d4', emoji: '✈️' },
 ];
 
 // ── Group filter ──────────────────────────────────────────────────────────────
@@ -32,11 +32,11 @@ const GROUP_OVERRIDES: { keywords: string[]; group: string }[] = [
 ];
 
 // ── Calendar grid (Monday-first) ──────────────────────────────────────────────
-const DAYS_MON = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const DAYS_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function getMonthGrid(year: number, month: number): Date[] {
   const first = new Date(year, month, 1);
-  const dayOfWeek = (first.getDay() + 6) % 7; // Mon=0
+  const dayOfWeek = (first.getDay() + 6) % 7;
   const start = new Date(first);
   start.setDate(start.getDate() - dayOfWeek);
   return Array.from({ length: 42 }, (_, i) => {
@@ -111,7 +111,7 @@ function parseICS(text: string): SchoolEvent[] {
     if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
     if (line === 'END:VEVENT') {
       if (cur?.date && belongsToGroup(cur))
-        events.push({ id: cur.id ?? uid(), title: cur.title ?? 'Cours', date: cur.date, time: cur.time, endTime: cur.endTime, location: cur.location, description: cur.description });
+        events.push({ id: cur.id ?? uid(), title: cur.title ?? 'Class', date: cur.date, time: cur.time, endTime: cur.endTime, location: cur.location, description: cur.description });
       cur = null; continue;
     }
     if (!cur) continue;
@@ -152,7 +152,6 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
   const [evPage, setEvPage]             = useState(0);
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM });
 
-  // New category form
   const [catModal, setCatModal] = useState(false);
   const [catForm, setCatForm] = useState({ name: '', emoji: '📌', color: '#6366f1' });
 
@@ -174,7 +173,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
       } catch (e) { lastErr = e; }
     }
     console.error('All CORS proxies failed:', lastErr);
-    setError('Impossible de charger le calendrier scolaire');
+    setError('all-proxies-failed');
     setLoading(false);
   }, []);
 
@@ -224,7 +223,6 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
     setCatForm({ name: '', emoji: '📌', color: '#6366f1' });
   };
 
-  // ── Merged events for a day ────────────────────────────────────────────────
   const allEventsFor = (d: Date): AnyEvent[] => {
     const s = toDateStr(d);
     const personal: AnyEvent[] = events
@@ -250,18 +248,17 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
   };
 
   const headerLabel = view === 'month'
-    ? cursor.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    ? cursor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
     : (() => {
         const days = getWeekDays(cursor);
-        const s = days[0].toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' });
-        const e = days[6].toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' });
+        const s = days[0].toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+        const e = days[6].toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' });
         return `${s} — ${e}`;
       })();
 
   const monthGrid = view === 'month' ? getMonthGrid(cursor.getFullYear(), cursor.getMonth()) : [];
   const weekDays  = view === 'week'  ? getWeekDays(cursor) : [];
 
-  // ── Event chip renderer ────────────────────────────────────────────────────
   const renderChip = (e: AnyEvent, compact: boolean) => {
     const onClick = (ev: React.MouseEvent) => {
       ev.stopPropagation();
@@ -281,7 +278,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
       >
         {!compact && e.isSchool && (
           <p className="text-[10px] opacity-70 flex items-center gap-0.5 mb-0.5">
-            <GraduationCap size={8} /> École
+            <GraduationCap size={8} /> School
           </p>
         )}
         {e.time && <span className={`mr-1 opacity-80 ${compact ? '' : 'text-[10px] block'}`}>{e.time}</span>}
@@ -292,7 +289,6 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
     );
   };
 
-  // ── All upcoming events list ───────────────────────────────────────────────
   const allEvents: (AnyEvent & { _date: string })[] = [
     ...events.map(e => ({ id: e.id, title: e.title, time: e.time, color: e.color, isSchool: false as const, reminder: e.reminder, _date: e.date })),
     ...schoolEvents.map(e => ({ id: e.id, title: e.title, time: e.time, endTime: e.endTime, color: SCHOOL_COLOR, isSchool: true as const, location: e.location, _date: e.date })),
@@ -313,16 +309,16 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
             <ChevronRight size={18} />
           </button>
           <button onClick={() => setCursor(new Date())} className="px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
-            Auj.
+            Today
           </button>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/60 rounded-lg">
             <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: SCHOOL_COLOR }} />
-            <span className="text-xs text-gray-400">École</span>
-            {schoolError && <span className="text-xs text-red-400">{schoolError}</span>}
-            <button onClick={fetchSchool} disabled={schoolLoading} className="text-gray-500 hover:text-white transition-colors disabled:opacity-40">
+            <span className="text-xs text-gray-400">School</span>
+            {schoolError && <span className="text-xs text-red-400">Failed</span>}
+            <button onClick={fetchSchool} disabled={schoolLoading} className="text-gray-500 hover:text-white transition-colors disabled:opacity-40" title="Retry school calendar">
               <RefreshCw size={13} className={schoolLoading ? 'animate-spin' : ''} />
             </button>
           </div>
@@ -335,16 +331,35 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
                 className={`px-3 py-1.5 text-xs font-medium transition-colors capitalize ${view === v ? 'text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`}
                 style={view === v ? { backgroundColor: 'var(--accent)' } : {}}
               >
-                {v === 'month' ? 'Mois' : 'Semaine'}
+                {v === 'month' ? 'Month' : 'Week'}
               </button>
             ))}
           </div>
 
           <button onClick={() => openAdd()} className="flex items-center gap-2 px-3 py-1.5 btn-accent text-white text-sm rounded-lg">
-            <Plus size={16} /> Ajouter
+            <Plus size={16} /> Add
           </button>
         </div>
       </div>
+
+      {/* School calendar error banner */}
+      {schoolError && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-900/40 bg-amber-950/20">
+          <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-300">School schedule unavailable</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              All CORS proxies failed — the school calendar server couldn't be reached from your browser.
+              Your last cached schedule is shown. Check your connection and try again.
+            </p>
+          </div>
+          <button onClick={fetchSchool} disabled={schoolLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-300 hover:text-white rounded-lg transition-colors shrink-0 disabled:opacity-40"
+            style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
+            <RefreshCw size={11} className={schoolLoading ? 'animate-spin' : ''} /> Retry
+          </button>
+        </div>
+      )}
 
       {/* Categories row */}
       <div className="flex gap-2 flex-wrap items-center">
@@ -355,7 +370,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
           </span>
         ))}
         <button onClick={() => setCatModal(true)} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs text-gray-500 border border-dashed border-gray-700 hover:border-gray-500 transition-colors">
-          <Plus size={10} /> Catégorie
+          <Plus size={10} /> Category
         </button>
       </div>
 
@@ -426,11 +441,11 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
       )}
 
       {/* Add/Edit modal */}
-      <Modal isOpen={modal} onClose={() => setModal(false)} title={editTarget ? 'Modifier l\'événement' : 'Ajouter un événement'}>
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={editTarget ? 'Edit event' : 'Add event'}>
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Titre *</label>
-            <input className={INPUT} placeholder="Titre de l'événement" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
+            <label className={LABEL}>Title *</label>
+            <input className={INPUT} placeholder="Event title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -438,12 +453,12 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
               <input type="date" className={INPUT} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
             </div>
             <div>
-              <label className={LABEL}>Heure (optionnel)</label>
+              <label className={LABEL}>Time (optional)</label>
               <input type="time" className={INPUT} value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className={LABEL}>Catégorie</label>
+            <label className={LABEL}>Category</label>
             <div className="flex gap-2 flex-wrap">
               {categories.map(cat => (
                 <button
@@ -467,29 +482,29 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
               style={form.reminder ? { backgroundColor: 'var(--accent)' } : {}}>
               <div className={`w-5 h-5 rounded-full bg-white transition-transform ${form.reminder ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
-            <span className="text-sm text-gray-300">Rappel</span>
+            <span className="text-sm text-gray-300">Reminder</span>
           </label>
           <div className="flex gap-3 pt-2">
             {editTarget && !editTarget.taskId && (
               <button onClick={() => { remove(editTarget.id); setModal(false); }}
                 className="flex items-center gap-2 px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 text-sm rounded-lg transition-colors">
-                <Trash2 size={14} /> Supprimer
+                <Trash2 size={14} /> Delete
               </button>
             )}
             <div className="flex gap-2 ml-auto">
-              <button onClick={() => setModal(false)} className={BTN_GHOST}>Annuler</button>
-              <button onClick={submit} className={BTN_PRIMARY}>{editTarget ? 'Sauvegarder' : 'Ajouter'}</button>
+              <button onClick={() => setModal(false)} className={BTN_GHOST}>Cancel</button>
+              <button onClick={submit} className={BTN_PRIMARY}>{editTarget ? 'Save' : 'Add'}</button>
             </div>
           </div>
         </div>
       </Modal>
 
       {/* New category modal */}
-      <Modal isOpen={catModal} onClose={() => setCatModal(false)} title="Nouvelle catégorie">
+      <Modal isOpen={catModal} onClose={() => setCatModal(false)} title="New category">
         <div className="space-y-4">
           <div>
-            <label className={LABEL}>Nom *</label>
-            <input className={INPUT} placeholder="ex: Famille" value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+            <label className={LABEL}>Name *</label>
+            <input className={INPUT} placeholder="e.g. Family" value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -497,19 +512,19 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
               <input className={INPUT} placeholder="📌" value={catForm.emoji} onChange={e => setCatForm(f => ({ ...f, emoji: e.target.value }))} />
             </div>
             <div>
-              <label className={LABEL}>Couleur</label>
+              <label className={LABEL}>Color</label>
               <input type="color" className="w-full h-[38px] rounded-lg cursor-pointer border border-gray-700 bg-gray-800 p-0.5" value={catForm.color} onChange={e => setCatForm(f => ({ ...f, color: e.target.value }))} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setCatModal(false)} className={BTN_GHOST}>Annuler</button>
-            <button onClick={addCategory} className={BTN_PRIMARY}>Créer</button>
+            <button onClick={() => setCatModal(false)} className={BTN_GHOST}>Cancel</button>
+            <button onClick={addCategory} className={BTN_PRIMARY}>Create</button>
           </div>
         </div>
       </Modal>
 
       {/* School detail modal */}
-      <Modal isOpen={!!schoolDetail} onClose={() => setSchoolDet(null)} title="Cours — École">
+      <Modal isOpen={!!schoolDetail} onClose={() => setSchoolDet(null)} title="Class — School">
         {schoolDetail && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-1">
@@ -518,7 +533,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
             </div>
             <p className="text-white font-semibold">{schoolDetail.title}</p>
             <p className="text-sm text-gray-400">
-              {parseLocal(schoolDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {parseLocal(schoolDetail.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               {schoolDetail.time && ` · ${schoolDetail.time}`}
               {schoolDetail.endTime && ` → ${schoolDetail.endTime}`}
             </p>
@@ -527,7 +542,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
                 <MapPin size={13} className="shrink-0" /> {schoolDetail.location}
               </p>
             )}
-            <p className="text-xs text-gray-600 pt-2 border-t border-gray-800">Événement scolaire — lecture seule</p>
+            <p className="text-xs text-gray-600 pt-2 border-t border-gray-800">School event — read-only</p>
           </div>
         )}
       </Modal>
@@ -537,10 +552,10 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
             <Bell size={16} className="text-accent" style={{ color: 'var(--accent)' }} />
-            Événements à venir
+            Upcoming events
             {schoolEvents.length > 0 && (
               <span className="text-xs font-normal text-gray-500">
-                · {allEvents.filter(e => !e.isSchool).length} personnels, {allEvents.filter(e => e.isSchool).length} scolaires
+                · {allEvents.filter(e => !e.isSchool).length} personal, {allEvents.filter(e => e.isSchool).length} school
               </span>
             )}
           </h2>
@@ -559,7 +574,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
           )}
         </div>
         {allEvents.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-4">Aucun événement à venir</p>
+          <p className="text-gray-500 text-sm text-center py-4">No upcoming events</p>
         ) : (
           <div className="space-y-2">
             {allEvents.slice(evPage * 10, evPage * 10 + 10).map(e => (
@@ -570,12 +585,12 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
                     <p className="text-sm text-white font-medium truncate">{e.title}</p>
                     {e.isSchool && (
                       <span className="shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: SCHOOL_COLOR + '30', color: SCHOOL_COLOR }}>
-                        École
+                        School
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-500">
-                    {parseLocal(e._date).toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {parseLocal(e._date).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                     {e.time && ` · ${e.time}`}
                     {e.isSchool && (e as any).endTime && ` → ${(e as any).endTime}`}
                     {!e.isSchool && e.reminder && ' 🔔'}
@@ -601,7 +616,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
                 {e.isSchool && (
                   <button onClick={() => setSchoolDet(schoolEvents.find(s => s.id === e.id) ?? null)}
                     className="shrink-0 text-xs text-gray-600 hover:text-gray-400 transition-colors px-2">
-                    Détails
+                    Details
                   </button>
                 )}
               </div>
@@ -611,7 +626,7 @@ export default function Calendar({ onNavigate, onNavigateToTask }: Props) {
       </div>
 
       {events.length > 0 && (
-        <p className="text-xs text-gray-600 text-center">Cliquer sur un événement pour modifier · Cliquer sur un jour pour ajouter</p>
+        <p className="text-xs text-gray-600 text-center">Click an event to edit · Click a day to add</p>
       )}
     </div>
   );

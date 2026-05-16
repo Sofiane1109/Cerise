@@ -25,11 +25,11 @@ export default function Login() {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setInfo('Compte créé ! Vérifie ton email pour confirmer, puis connecte-toi.');
+        setInfo('Account created! Check your email to confirm, then sign in.');
         setMode('signin');
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -44,13 +44,13 @@ export default function Login() {
             <img src={logo} alt="Myne" className="w-full h-full object-contain rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-white">Myne</h1>
-          <p className="text-gray-500 text-sm mt-1">Ton espace personnel</p>
+          <p className="text-gray-500 text-sm mt-1">Your personal space</p>
         </div>
 
         {/* Card */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-base font-semibold text-white mb-5">
-            {mode === 'signin' ? 'Se connecter' : 'Créer un compte'}
+            {mode === 'signin' ? 'Sign in' : 'Create account'}
           </h2>
 
           {error && (
@@ -70,7 +70,7 @@ export default function Login() {
               <input
                 type="email"
                 className={INPUT}
-                placeholder="toi@exemple.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -78,7 +78,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <label className={LABEL}>Mot de passe</label>
+              <label className={LABEL}>Password</label>
               <input
                 type="password"
                 className={INPUT}
@@ -101,23 +101,23 @@ export default function Login() {
                   ? <LogIn size={16} />
                   : <UserPlus size={16} />
               }
-              {mode === 'signin' ? 'Se connecter' : 'Créer un compte'}
+              {mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </form>
 
           <div className="mt-4 text-center">
             {mode === 'signin' ? (
               <p className="text-xs text-gray-500">
-                Pas encore de compte ?{' '}
+                No account yet?{' '}
                 <button onClick={() => { setMode('signup'); setError(null); setInfo(null); }} className="text-indigo-400 hover:text-indigo-300 transition-colors">
-                  S'inscrire
+                  Sign up
                 </button>
               </p>
             ) : (
               <p className="text-xs text-gray-500">
-                Déjà un compte ?{' '}
+                Already have an account?{' '}
                 <button onClick={() => { setMode('signin'); setError(null); setInfo(null); }} className="text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Se connecter
+                  Sign in
                 </button>
               </p>
             )}
