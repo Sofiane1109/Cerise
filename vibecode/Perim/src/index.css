@@ -1,0 +1,48 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: #111;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  max-width: 430px;
+  height: 100%;
+  background: #F7F3ED;
+  position: relative;
+  overflow: hidden;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea {
+  font: inherit;
+  outline: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}

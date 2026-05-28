@@ -20,6 +20,7 @@ import Subscriptions from './modules/Subscriptions';
 import Hub from './modules/Hub';
 import Notes from './modules/Notes';
 import { handleCallback } from './lib/spotify';
+import { autoLogSubscriptions } from './utils/autoLogSubscriptions';
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
 
@@ -91,6 +92,7 @@ export default function App() {
     setAppState('syncing');
     initSync();
     await syncOnLogin();
+    autoLogSubscriptions();
     setAppState('ready');
   }
 
