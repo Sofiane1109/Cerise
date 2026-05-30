@@ -36,11 +36,6 @@ export default function About() {
                 Web & Mobile Development, and Digital Consulting — building real projects
                 that solve everyday problems.
               </p>
-              <p className="italic text-slate-500">
-                {/* [BIO] — Replace this paragraph with your personal story */}
-                [BIO] — Write a few sentences about yourself here: your background, what drives you,
-                what kind of projects excite you, and where you want to go.
-              </p>
               <p>
                 My focus spans{' '}
                 <span
