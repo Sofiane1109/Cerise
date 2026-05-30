@@ -21,6 +21,7 @@ import Hub from './modules/Hub';
 import Notes from './modules/Notes';
 import { handleCallback } from './lib/spotify';
 import { autoLogSubscriptions } from './utils/autoLogSubscriptions';
+import { checkAndSendNotifications } from './utils/notifications';
 
 const DEFAULT_SETTINGS: UserSettings = { name: '', accentColor: '#6366f1' };
 
@@ -94,6 +95,8 @@ export default function App() {
     await syncOnLogin();
     autoLogSubscriptions();
     setAppState('ready');
+    // Fire after state is set so the UI isn't blocked
+    checkAndSendNotifications();
   }
 
   const logout = async () => { await supabase.auth.signOut(); setAppState('login'); };
