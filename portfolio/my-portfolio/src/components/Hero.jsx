@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Particles, { initParticlesEngine } from '@tsparticles/react'
-import { loadSlim } from '@tsparticles/slim'
-import { FaGithub, FaLinkedin } from 'react-icons/fa'
+import { FaGithub, FaLinkedin, FaArrowDown } from 'react-icons/fa'
 
 const PHRASES = [
   'Web & Mobile Development',
   'AI & Data Engineering',
-  'Digital Consultant',
+  'Digital Consulting',
 ]
 
 function useTypewriter() {
@@ -18,9 +16,8 @@ function useTypewriter() {
   useEffect(() => {
     const phrase = PHRASES[phraseIdx]
     let t
-
     if (!deleting && text === phrase) {
-      t = setTimeout(() => setDeleting(true), 2200)
+      t = setTimeout(() => setDeleting(true), 2400)
     } else if (deleting && text === '') {
       setDeleting(false)
       setPhraseIdx((i) => (i + 1) % PHRASES.length)
@@ -30,7 +27,7 @@ function useTypewriter() {
           setText(
             deleting ? phrase.slice(0, text.length - 1) : phrase.slice(0, text.length + 1)
           ),
-        deleting ? 38 : 75
+        deleting ? 35 : 70
       )
     }
     return () => clearTimeout(t)
@@ -39,36 +36,8 @@ function useTypewriter() {
   return text
 }
 
-const PARTICLE_OPTIONS = {
-  background: { color: { value: 'transparent' } },
-  fpsLimit: 60,
-  particles: {
-    color: { value: ['#7c3aed', '#3b82f6', '#a855f7'] },
-    move: {
-      direction: 'none',
-      enable: true,
-      outModes: { default: 'out' },
-      random: true,
-      speed: 0.4,
-      straight: false,
-    },
-    number: { density: { enable: true, area: 900 }, value: 90 },
-    opacity: { value: { min: 0.08, max: 0.4 } },
-    shape: { type: 'circle' },
-    size: { value: { min: 1, max: 2.5 } },
-  },
-  detectRetina: true,
-}
-
 export default function Hero() {
-  const [particlesReady, setParticlesReady] = useState(false)
   const text = useTypewriter()
-
-  useEffect(() => {
-    initParticlesEngine(async (engine) => {
-      await loadSlim(engine)
-    }).then(() => setParticlesReady(true))
-  }, [])
 
   const scrollTo = (id) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -78,58 +47,78 @@ export default function Hero() {
       id="hero"
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {particlesReady && (
-        <Particles
-          id="tsparticles"
-          className="absolute inset-0"
-          options={PARTICLE_OPTIONS}
-        />
-      )}
-
       {/* Ambient orbs */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: '-10%',
-          left: '-10%',
-          width: '55vw',
-          height: '55vw',
+          top: '-15%', left: '-15%',
+          width: '65vw', height: '65vw',
           borderRadius: '50%',
-          background:
-            'radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 68%)',
-          filter: 'blur(80px)',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.16) 0%, transparent 65%)',
+          filter: 'blur(40px)',
         }}
       />
       <div
         className="absolute pointer-events-none"
         style={{
-          bottom: '-10%',
-          right: '-5%',
-          width: '45vw',
-          height: '45vw',
+          bottom: '-15%', right: '-10%',
+          width: '50vw', height: '50vw',
           borderRadius: '50%',
-          background:
-            'radial-gradient(circle, rgba(59,130,246,0.14) 0%, transparent 68%)',
-          filter: 'blur(80px)',
+          background: 'radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 65%)',
+          filter: 'blur(40px)',
+        }}
+      />
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: '40%', left: '50%', transform: 'translate(-50%,-50%)',
+          width: '30vw', height: '30vw',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)',
+          filter: 'blur(30px)',
+        }}
+      />
+
+      {/* Grid overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+          maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)',
         }}
       />
 
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-        <motion.p
-          className="text-xs font-semibold tracking-widest uppercase mb-5"
-          style={{ color: '#a78bfa' }}
+
+        {/* Available badge */}
+        <motion.div
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8"
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.2)',
+          }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          Hello, I&apos;m
-        </motion.p>
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ background: '#22c55e', boxShadow: '0 0 8px #22c55e' }}
+          />
+          <span className="text-xs font-semibold" style={{ color: '#86efac' }}>
+            Available for opportunities
+          </span>
+        </motion.div>
 
+        {/* Name */}
         <motion.h1
-          className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight leading-none mb-6"
+          className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight leading-none mb-5"
           style={{
-            background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 55%, #94a3b8 100%)',
+            fontFamily: "'Space Grotesk', sans-serif",
+            background: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 45%, #94a3b8 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -141,25 +130,28 @@ export default function Hero() {
           Sofiane En-Nali
         </motion.h1>
 
+        {/* Role */}
         <motion.p
-          className="text-base sm:text-lg font-medium mb-5"
-          style={{ color: '#94a3b8' }}
+          className="text-base sm:text-lg font-medium mb-4"
+          style={{ color: '#64748b', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.75rem' }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
         >
-          Computer Science Student
+          Computer Science Student · Belgium
         </motion.p>
 
+        {/* Typewriter */}
         <motion.div
-          className="h-9 flex items-center justify-center mb-12"
+          className="h-10 flex items-center justify-center mb-10"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
           <span
-            className="text-lg sm:text-xl font-medium"
+            className="text-xl sm:text-2xl font-semibold"
             style={{
+              fontFamily: "'Space Grotesk', sans-serif",
               background: 'linear-gradient(135deg, #7c3aed, #3b82f6)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -167,40 +159,43 @@ export default function Hero() {
             }}
           >
             {text}
-            <span style={{ WebkitTextFillColor: '#7c3aed', animation: 'blink 1s step-end infinite' }}>|</span>
+            <span style={{ WebkitTextFillColor: '#7c3aed' }}>|</span>
           </span>
         </motion.div>
 
+        {/* CTAs */}
         <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
           <button
             onClick={() => scrollTo('projects')}
-            className="px-8 py-3.5 rounded-full font-semibold text-white text-sm transition-all duration-300 hover:scale-105 hover:brightness-110"
+            className="px-8 py-3.5 rounded-full font-semibold text-white text-sm transition-all duration-300 hover:scale-105 hover:brightness-110 cursor-pointer"
             style={{
+              fontFamily: "'Space Grotesk', sans-serif",
               background: 'linear-gradient(135deg, #7c3aed, #3b82f6)',
-              boxShadow: '0 0 24px rgba(124,58,237,0.35)',
+              boxShadow: '0 0 28px rgba(124,58,237,0.4), 0 4px 16px rgba(0,0,0,0.3)',
             }}
           >
-            See my projects
+            View my work
           </button>
           <button
             onClick={() => scrollTo('contact')}
-            className="px-8 py-3.5 rounded-full font-semibold text-sm text-slate-200 transition-all duration-300 hover:scale-105 hover:bg-white/10"
+            className="px-8 py-3.5 rounded-full font-semibold text-sm text-slate-200 transition-all duration-300 hover:scale-105 hover:bg-white/10 cursor-pointer"
             style={{
-              border: '1px solid rgba(124,58,237,0.45)',
-              background: 'rgba(124,58,237,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
             }}
           >
             Get in touch
           </button>
         </motion.div>
 
+        {/* Social links */}
         <motion.div
-          className="flex items-center justify-center gap-6"
+          className="flex items-center justify-center gap-5"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.6 }}
@@ -209,41 +204,46 @@ export default function Hero() {
             href="https://github.com/Sofiane1109"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-slate-500 hover:text-white transition-all duration-200 hover:scale-110"
+            className="flex items-center gap-2 text-slate-500 hover:text-white transition-all duration-200 hover:scale-110 cursor-pointer"
             aria-label="GitHub"
           >
-            <FaGithub size={22} />
+            <FaGithub size={20} />
+            <span className="text-xs font-medium">GitHub</span>
           </a>
+          <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.1)' }} />
           <a
             href="https://www.linkedin.com/in/sofiane-en-nali/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-slate-500 hover:text-blue-400 transition-all duration-200 hover:scale-110"
+            className="flex items-center gap-2 text-slate-500 hover:text-blue-400 transition-all duration-200 hover:scale-110 cursor-pointer"
             aria-label="LinkedIn"
           >
-            <FaLinkedin size={22} />
+            <FaLinkedin size={20} />
+            <span className="text-xs font-medium">LinkedIn</span>
           </a>
         </motion.div>
       </div>
 
       {/* Scroll hint */}
       <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
-
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+      <motion.button
+        onClick={() => scrollTo('about')}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.8 }}
+        transition={{ delay: 1.4, duration: 0.8 }}
+        aria-label="Scroll down"
       >
-        <span className="text-xs text-slate-600 tracking-widest uppercase">Scroll</span>
+        <span className="text-[10px] text-slate-600 tracking-widest uppercase">Scroll</span>
         <motion.div
-          className="w-px h-10 rounded-full"
-          style={{ background: 'linear-gradient(180deg, #7c3aed, transparent)' }}
-          animate={{ scaleY: [0.3, 1, 0.3], opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </motion.div>
-
+          className="w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}
+          animate={{ y: [0, 4, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <FaArrowDown size={11} style={{ color: '#475569' }} />
+        </motion.div>
+      </motion.button>
     </section>
   )
 }

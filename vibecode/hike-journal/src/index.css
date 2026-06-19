@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────
+   Design tokens — UI/UX Pro Max colors.csv
+   Fitness/Gym #37 bg + Agriculture/Farm #52 greens
+   bg:#1F2937  surface:#111827  primary:#22C55E  accent:#CA8A04
+───────────────────────────────────────────────────────── */
+:root {
+  --bg:         #1F2937;
+  --surface:    #111827;
+  --border:     #374151;
+  --primary:    #22C55E;
+  --primary-dk: #15803D;
+  --accent:     #CA8A04;
+  --text:       #F9FAFB;
+  --text-2:     #D1D5DB;
+  --text-3:     #6B7280;
+  --text-4:     #374151;
+}
+
+@layer base {
+  html  { @apply scroll-smooth; }
+  body  { background-color: #1F2937; color: #F9FAFB; @apply font-sans antialiased m-0; }
+  #root { @apply min-h-screen w-full text-left; }
+  h1,h2,h3,h4 { @apply font-serif; }
+
+  ::selection { background: rgba(34,197,94,0.2); color: #22C55E; }
+
+  ::-webkit-scrollbar       { width: 4px; }
+  ::-webkit-scrollbar-track { background: #111827; }
+  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 99px; }
+}
+
+@layer components {
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 font-sans font-semibold text-sm
+           px-5 py-2.5 rounded-xl transition-colors duration-200 active:scale-95
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900
+           disabled:opacity-40 disabled:cursor-not-allowed;
+    background: #22C55E;
+    color: #052e16;
+  }
+  .btn-primary:hover:not(:disabled) { background: #16a34a; }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 font-sans font-medium text-sm
+           px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95
+           border focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
+    background: transparent;
+    border-color: #374151;
+    color: #D1D5DB;
+  }
+  .btn-secondary:hover { background: #1F2937; color: #F9FAFB; border-color: #4B5563; }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 font-sans font-medium text-sm
+           px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95
+           border focus:outline-none;
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.3);
+    color: #FCA5A5;
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 font-sans text-sm
+           px-3 py-2 rounded-xl transition-all duration-200
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
+    color: #6B7280;
+  }
+  .btn-ghost:hover { background: #1F2937; color: #D1D5DB; }
+
+  .card {
+    background: #111827;
+    border: 1px solid #374151;
+    @apply rounded-2xl;
+  }
+
+  .input {
+    @apply w-full text-sm px-4 py-2.5 rounded-xl border
+           transition-colors duration-200
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
+    background: #1F2937;
+    border-color: #374151;
+    color: #F9FAFB;
+  }
+  .input::placeholder { color: #374151; }
+  .input:focus        { border-color: #22C55E; }
+
+  .textarea {
+    @apply w-full text-sm px-4 py-3 rounded-xl border resize-none
+           transition-colors duration-200
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
+    background: #1F2937;
+    border-color: #374151;
+    color: #F9FAFB;
+  }
+  .textarea::placeholder { color: #374151; }
+  .textarea:focus        { border-color: #22C55E; }
+
+  .select {
+    @apply w-full text-sm px-4 py-2.5 rounded-xl border
+           transition-colors duration-200
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500;
+    background: #1F2937;
+    border-color: #374151;
+    color: #F9FAFB;
+  }
+  .select:focus { border-color: #22C55E; }
+
+  .label {
+    @apply block text-xs font-sans font-medium mb-1.5 tracking-wide uppercase;
+    color: #6B7280;
+  }
+
+  .page-container { @apply max-w-6xl mx-auto px-4 sm:px-6 py-8; }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .animate-fade-up  { animation: fadeUp  0.35s ease-out both; }
+  .animate-fade-in  { animation: fadeIn  0.25s ease-out both; }
+  .animate-scale-in { animation: scaleIn 0.20s ease-out both; }
+}
+
+@keyframes fadeUp  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes scaleIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
